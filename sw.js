@@ -1,5 +1,5 @@
-// Service Worker for Maharlika Philippine Grocery POS
-const CACHE_NAME = 'maharlika-pos-v1.0.0';
+// Service Worker for CHA Convenience Store POS
+const CACHE_NAME = 'cha-pos-v1.0.1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -35,7 +35,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch fresh copy in background
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {

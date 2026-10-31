@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#064e3b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Maharlika POS" />
-  <title>Maharlika Grocery & Supermarket POS (PHP ₱)</title>
+  <meta name="apple-mobile-web-app-title" content="CHA POS" />
+  <title>CHA CONVENIENCE STORE — Point of Sale (PHP ₱)</title>
   <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="manifest" href="manifest.json" />
   <!-- Tailwind CSS -->
@@ -74,7 +74,7 @@
     window.POS_GITHUB_REPO = "pong82n/pos-grocery";
     window.POS_GITHUB_BRANCH = "main";
 
-    // Service Worker Registration
+    // Service Worker Registration for Offline Capabilities
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').then((reg) => {
@@ -88,7 +88,7 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
 
-    // Currency Formatter
+    // Currency Formatter for Philippine Peso (₱)
     const formatPHP = (amount) => {
       const num = Number(amount) || 0;
       return '₱' + num.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -96,70 +96,70 @@
 
     // Authentic Philippine Grocery Database (2026 Supermarket / DTI SRP Prices)
     const INITIAL_PRODUCTS = [
-      // 🌾 Bigas at Butil (Rice & Grains - Sold by kg, VAT-Exempt)
-      { id: 'RIC-001', barcode: '480001001001', plu: '1001', name: 'Sinandomeng Special Rice', category: 'Rice', unit: 'kg', price: 52.00, cost: 44.00, stock: 450, isWeighed: true, isVatExempt: true, image: '🌾' },
-      { id: 'RIC-002', barcode: '480001001002', plu: '1002', name: 'Dinorado Fragrant Rice', category: 'Rice', unit: 'kg', price: 62.00, cost: 52.00, stock: 320, isWeighed: true, isVatExempt: true, image: '🌾' },
-      { id: 'RIC-003', barcode: '480001001003', plu: '1003', name: 'Jasmine White Rice', category: 'Rice', unit: 'kg', price: 58.00, cost: 48.00, stock: 280, isWeighed: true, isVatExempt: true, image: '🌾' },
-      { id: 'RIC-004', barcode: '480001001004', plu: '1004', name: 'Organic Brown Rice', category: 'Rice', unit: 'kg', price: 68.00, cost: 56.00, stock: 150, isWeighed: true, isVatExempt: true, image: '🌾' },
-      { id: 'RIC-005', barcode: '480001001005', plu: '1005', name: 'Malagkit (Glutinous Rice)', category: 'Rice', unit: 'kg', price: 74.00, cost: 60.00, stock: 120, isWeighed: true, isVatExempt: true, image: '🌾' },
+      // 🌾 Rice & Grains (Sold by kg, VAT-Exempt)
+      { id: 'RIC-001', barcode: '480001001001', plu: '1001', name: 'Sinandomeng Special Rice', category: 'Rice & Grains', unit: 'kg', price: 52.00, cost: 44.00, stock: 450, isWeighed: true, isVatExempt: true, image: '🌾' },
+      { id: 'RIC-002', barcode: '480001001002', plu: '1002', name: 'Dinorado Fragrant Rice', category: 'Rice & Grains', unit: 'kg', price: 62.00, cost: 52.00, stock: 320, isWeighed: true, isVatExempt: true, image: '🌾' },
+      { id: 'RIC-003', barcode: '480001001003', plu: '1003', name: 'Jasmine White Rice', category: 'Rice & Grains', unit: 'kg', price: 58.00, cost: 48.00, stock: 280, isWeighed: true, isVatExempt: true, image: '🌾' },
+      { id: 'RIC-004', barcode: '480001001004', plu: '1004', name: 'Organic Brown Rice', category: 'Rice & Grains', unit: 'kg', price: 68.00, cost: 56.00, stock: 150, isWeighed: true, isVatExempt: true, image: '🌾' },
+      { id: 'RIC-005', barcode: '480001001005', plu: '1005', name: 'Glutinous Rice (Malagkit)', category: 'Rice & Grains', unit: 'kg', price: 74.00, cost: 60.00, stock: 120, isWeighed: true, isVatExempt: true, image: '🌾' },
 
-      // 🥬 Gulay at Prutas (Fresh Produce - Sold by kg, VAT-Exempt)
-      { id: 'VEG-001', barcode: '480002002001', plu: '2001', name: 'Red Onion (Sibuyas Pula)', category: 'Produce', unit: 'kg', price: 140.00, cost: 110.00, stock: 85, isWeighed: true, isVatExempt: true, image: '🧅' },
-      { id: 'VEG-002', barcode: '480002002002', plu: '2002', name: 'White Garlic (Bawang)', category: 'Produce', unit: 'kg', price: 160.00, cost: 125.00, stock: 70, isWeighed: true, isVatExempt: true, image: '🧄' },
-      { id: 'VEG-003', barcode: '480002002003', plu: '2003', name: 'Native Tomatoes (Kamatis)', category: 'Produce', unit: 'kg', price: 85.00, cost: 60.00, stock: 95, isWeighed: true, isVatExempt: true, image: '🍅' },
-      { id: 'VEG-004', barcode: '480002002004', plu: '2004', name: 'Fresh Calamansi', category: 'Produce', unit: 'kg', price: 95.00, cost: 70.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🍋' },
-      { id: 'VEG-005', barcode: '480002002005', plu: '4011', name: 'Lakatan Banana', category: 'Produce', unit: 'kg', price: 90.00, cost: 65.00, stock: 110, isWeighed: true, isVatExempt: true, image: '🍌' },
-      { id: 'VEG-006', barcode: '480002002006', plu: '4012', name: 'Cavendish Banana', category: 'Produce', unit: 'kg', price: 80.00, cost: 58.00, stock: 90, isWeighed: true, isVatExempt: true, image: '🍌' },
-      { id: 'VEG-007', barcode: '480002002007', plu: '2007', name: 'Benguet Potato (Patatas)', category: 'Produce', unit: 'kg', price: 120.00, cost: 90.00, stock: 80, isWeighed: true, isVatExempt: true, image: '🥔' },
-      { id: 'VEG-008', barcode: '480002002008', plu: '2008', name: 'Carrots (Benguet)', category: 'Produce', unit: 'kg', price: 110.00, cost: 82.00, stock: 75, isWeighed: true, isVatExempt: true, image: '🥕' },
-      { id: 'VEG-009', barcode: '480002002009', plu: '2009', name: 'Ampalaya (Bitter Gourd)', category: 'Produce', unit: 'kg', price: 125.00, cost: 95.00, stock: 50, isWeighed: true, isVatExempt: true, image: '🥒' },
-      { id: 'VEG-010', barcode: '480002002010', plu: '2010', name: 'Eggplant (Talong)', category: 'Produce', unit: 'kg', price: 90.00, cost: 68.00, stock: 65, isWeighed: true, isVatExempt: true, image: '🍆' },
-      { id: 'VEG-011', barcode: '480002002011', plu: '2011', name: 'Green Cabbage (Repolyo)', category: 'Produce', unit: 'kg', price: 100.00, cost: 75.00, stock: 70, isWeighed: true, isVatExempt: true, image: '🥬' },
-      { id: 'VEG-012', barcode: '480002002012', plu: '2012', name: 'Ginger Root (Luya)', category: 'Produce', unit: 'kg', price: 170.00, cost: 130.00, stock: 45, isWeighed: true, isVatExempt: true, image: '🫚' },
+      // 🥬 Fresh Produce (Vegetables & Fruits - Sold by kg, VAT-Exempt)
+      { id: 'VEG-001', barcode: '480002002001', plu: '2001', name: 'Red Onion (Sibuyas Pula)', category: 'Fresh Produce', unit: 'kg', price: 140.00, cost: 110.00, stock: 85, isWeighed: true, isVatExempt: true, image: '🧅' },
+      { id: 'VEG-002', barcode: '480002002002', plu: '2002', name: 'White Garlic (Bawang)', category: 'Fresh Produce', unit: 'kg', price: 160.00, cost: 125.00, stock: 70, isWeighed: true, isVatExempt: true, image: '🧄' },
+      { id: 'VEG-003', barcode: '480002002003', plu: '2003', name: 'Native Tomatoes (Kamatis)', category: 'Fresh Produce', unit: 'kg', price: 85.00, cost: 60.00, stock: 95, isWeighed: true, isVatExempt: true, image: '🍅' },
+      { id: 'VEG-004', barcode: '480002002004', plu: '2004', name: 'Fresh Calamansi Lime', category: 'Fresh Produce', unit: 'kg', price: 95.00, cost: 70.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🍋' },
+      { id: 'VEG-005', barcode: '480002002005', plu: '4011', name: 'Lakatan Bananas', category: 'Fresh Produce', unit: 'kg', price: 90.00, cost: 65.00, stock: 110, isWeighed: true, isVatExempt: true, image: '🍌' },
+      { id: 'VEG-006', barcode: '480002002006', plu: '4012', name: 'Cavendish Bananas', category: 'Fresh Produce', unit: 'kg', price: 80.00, cost: 58.00, stock: 90, isWeighed: true, isVatExempt: true, image: '🍌' },
+      { id: 'VEG-007', barcode: '480002002007', plu: '2007', name: 'Benguet Potatoes', category: 'Fresh Produce', unit: 'kg', price: 120.00, cost: 90.00, stock: 80, isWeighed: true, isVatExempt: true, image: '🥔' },
+      { id: 'VEG-008', barcode: '480002002008', plu: '2008', name: 'Fresh Benguet Carrots', category: 'Fresh Produce', unit: 'kg', price: 110.00, cost: 82.00, stock: 75, isWeighed: true, isVatExempt: true, image: '🥕' },
+      { id: 'VEG-009', barcode: '480002002009', plu: '2009', name: 'Bitter Gourd (Ampalaya)', category: 'Fresh Produce', unit: 'kg', price: 125.00, cost: 95.00, stock: 50, isWeighed: true, isVatExempt: true, image: '🥒' },
+      { id: 'VEG-010', barcode: '480002002010', plu: '2010', name: 'Purple Eggplant (Talong)', category: 'Fresh Produce', unit: 'kg', price: 90.00, cost: 68.00, stock: 65, isWeighed: true, isVatExempt: true, image: '🍆' },
+      { id: 'VEG-011', barcode: '480002002011', plu: '2011', name: 'Green Cabbage (Repolyo)', category: 'Fresh Produce', unit: 'kg', price: 100.00, cost: 75.00, stock: 70, isWeighed: true, isVatExempt: true, image: '🥬' },
+      { id: 'VEG-012', barcode: '480002002012', plu: '2012', name: 'Fresh Ginger Root (Luya)', category: 'Fresh Produce', unit: 'kg', price: 170.00, cost: 130.00, stock: 45, isWeighed: true, isVatExempt: true, image: '🫚' },
 
-      // 🥩 Karne at Isda (Meat & Seafood - Sold by kg, VAT-Exempt)
-      { id: 'MEA-001', barcode: '480003003001', plu: '3001', name: 'Fresh Dressed Chicken (Whole)', category: 'Meat & Seafood', unit: 'kg', price: 195.00, cost: 160.00, stock: 85, isWeighed: true, isVatExempt: true, image: '🍗' },
-      { id: 'MEA-002', barcode: '480003003002', plu: '3002', name: 'Pork Liempo (Belly)', category: 'Meat & Seafood', unit: 'kg', price: 360.00, cost: 300.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🥓' },
-      { id: 'MEA-003', barcode: '480003003003', plu: '3003', name: 'Pork Kasim (Shoulder)', category: 'Meat & Seafood', unit: 'kg', price: 320.00, cost: 265.00, stock: 65, isWeighed: true, isVatExempt: true, image: '🥩' },
-      { id: 'MEA-004', barcode: '480003003004', plu: '3004', name: 'Beef Sirloin (Kenchi/Laman)', category: 'Meat & Seafood', unit: 'kg', price: 460.00, cost: 385.00, stock: 40, isWeighed: true, isVatExempt: true, image: '🥩' },
-      { id: 'MEA-005', barcode: '480003003005', plu: '3005', name: 'Fresh Bangus (Milkfish Dagupan)', category: 'Meat & Seafood', unit: 'kg', price: 240.00, cost: 195.00, stock: 50, isWeighed: true, isVatExempt: true, image: '🐟' },
-      { id: 'MEA-006', barcode: '480003003006', plu: '3006', name: 'Fresh Tilapia', category: 'Meat & Seafood', unit: 'kg', price: 160.00, cost: 125.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🐟' },
+      // 🥩 Meat & Seafood (Sold by kg, VAT-Exempt)
+      { id: 'MEA-001', barcode: '480003003001', plu: '3001', name: 'Fresh Whole Dressed Chicken', category: 'Meat & Seafood', unit: 'kg', price: 195.00, cost: 160.00, stock: 85, isWeighed: true, isVatExempt: true, image: '🍗' },
+      { id: 'MEA-002', barcode: '480003003002', plu: '3002', name: 'Pork Belly (Liempo)', category: 'Meat & Seafood', unit: 'kg', price: 360.00, cost: 300.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🥓' },
+      { id: 'MEA-003', barcode: '480003003003', plu: '3003', name: 'Pork Shoulder (Kasim)', category: 'Meat & Seafood', unit: 'kg', price: 320.00, cost: 265.00, stock: 65, isWeighed: true, isVatExempt: true, image: '🥩' },
+      { id: 'MEA-004', barcode: '480003003004', plu: '3004', name: 'Beef Sirloin Steak Cut', category: 'Meat & Seafood', unit: 'kg', price: 460.00, cost: 385.00, stock: 40, isWeighed: true, isVatExempt: true, image: '🥩' },
+      { id: 'MEA-005', barcode: '480003003005', plu: '3005', name: 'Fresh Milkfish (Dagupan Bangus)', category: 'Meat & Seafood', unit: 'kg', price: 240.00, cost: 195.00, stock: 50, isWeighed: true, isVatExempt: true, image: '🐟' },
+      { id: 'MEA-006', barcode: '480003003006', plu: '3006', name: 'Fresh Live Tilapia', category: 'Meat & Seafood', unit: 'kg', price: 160.00, cost: 125.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🐟' },
 
-      // 🥫 De Lata at Instant (Canned & Instant Goods - VATable)
+      // 🥫 Canned & Instant Goods (VATable)
       { id: 'CAN-001', barcode: '480001664401', plu: '', name: 'Lucky Me! Pancit Canton Kalamansi 80g', category: 'Canned & Instant', unit: 'pc', price: 16.00, cost: 13.50, stock: 240, isWeighed: false, isVatExempt: false, image: '🍜' },
       { id: 'CAN-002', barcode: '480001664402', plu: '', name: 'Lucky Me! Pancit Canton Chilimansi 80g', category: 'Canned & Instant', unit: 'pc', price: 16.00, cost: 13.50, stock: 240, isWeighed: false, isVatExempt: false, image: '🍜' },
       { id: 'CAN-003', barcode: '480001664403', plu: '', name: 'Lucky Me! Instant Mami Chicken 55g', category: 'Canned & Instant', unit: 'pc', price: 15.00, cost: 12.50, stock: 180, isWeighed: false, isVatExempt: false, image: '🍜' },
       { id: 'CAN-004', barcode: '480001665101', plu: '', name: 'Century Tuna Flakes in Oil 180g', category: 'Canned & Instant', unit: 'can', price: 44.00, cost: 37.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-005', barcode: '480001665102', plu: '', name: 'Century Tuna Flakes Hot & Spicy 180g', category: 'Canned & Instant', unit: 'can', price: 44.00, cost: 37.00, stock: 150, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-005', barcode: '480001665102', plu: '', name: 'Century Tuna Hot & Spicy 180g', category: 'Canned & Instant', unit: 'can', price: 44.00, cost: 37.00, stock: 150, isWeighed: false, isVatExempt: false, image: '🥫' },
       { id: 'CAN-006', barcode: '480001665201', plu: '', name: 'San Marino Corned Tuna 180g', category: 'Canned & Instant', unit: 'can', price: 43.00, cost: 36.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-007', barcode: '480001665301', plu: '', name: 'Mega Sardines in Tomato Sauce 155g', category: 'Canned & Instant', unit: 'can', price: 24.50, cost: 20.00, stock: 220, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-008', barcode: '480001665302', plu: '', name: 'Ligo Sardines Red (Extra Hot) 155g', category: 'Canned & Instant', unit: 'can', price: 25.00, cost: 20.50, stock: 130, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-007', barcode: '480001665301', plu: '', name: 'Mega Sardines Tomato Sauce 155g', category: 'Canned & Instant', unit: 'can', price: 24.50, cost: 20.00, stock: 220, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-008', barcode: '480001665302', plu: '', name: 'Ligo Sardines Extra Hot 155g', category: 'Canned & Instant', unit: 'can', price: 25.00, cost: 20.50, stock: 130, isWeighed: false, isVatExempt: false, image: '🥫' },
       { id: 'CAN-009', barcode: '480001665401', plu: '', name: 'Argentina Corned Beef 175g', category: 'Canned & Instant', unit: 'can', price: 43.00, cost: 35.50, stock: 140, isWeighed: false, isVatExempt: false, image: '🥫' },
       { id: 'CAN-010', barcode: '480001665501', plu: '', name: 'Purefoods Classic Corned Beef 210g', category: 'Canned & Instant', unit: 'can', price: 88.00, cost: 74.00, stock: 95, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-011', barcode: '480001665601', plu: '', name: 'Spam Luncheon Meat Classic 340g', category: 'Canned & Instant', unit: 'can', price: 198.00, cost: 168.00, stock: 65, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-011', barcode: '480001665601', plu: '', name: 'Spam Classic Luncheon Meat 340g', category: 'Canned & Instant', unit: 'can', price: 198.00, cost: 168.00, stock: 65, isWeighed: false, isVatExempt: false, image: '🥫' },
 
-      // 🥛 Gatas, Itlog at Tinapay (Dairy, Eggs & Bakery)
+      // 🥛 Dairy, Eggs & Bakery
       { id: 'DAI-001', barcode: '480004004001', plu: '4001', name: 'Fresh Farm Egg Large (Piece)', category: 'Dairy & Eggs', unit: 'pc', price: 9.50, cost: 7.80, stock: 360, isWeighed: false, isVatExempt: true, image: '🥚' },
-      { id: 'DAI-002', barcode: '480004004002', plu: '4002', name: 'Tray of Fresh Eggs Large (30 pcs)', category: 'Dairy & Eggs', unit: 'tray', price: 275.00, cost: 235.00, stock: 45, isWeighed: false, isVatExempt: true, image: '🥚' },
+      { id: 'DAI-002', barcode: '480004004002', plu: '4002', name: 'Fresh Farm Eggs Large (Tray of 30)', category: 'Dairy & Eggs', unit: 'tray', price: 275.00, cost: 235.00, stock: 45, isWeighed: false, isVatExempt: true, image: '🥚' },
       { id: 'DAI-003', barcode: '480004004003', plu: '', name: 'Magnolia Fresh Milk 1L', category: 'Dairy & Eggs', unit: 'pc', price: 115.00, cost: 96.00, stock: 80, isWeighed: false, isVatExempt: false, image: '🥛' },
       { id: 'DAI-004', barcode: '480004004004', plu: '', name: 'Bear Brand Fortified Milk Powder 300g', category: 'Dairy & Eggs', unit: 'pc', price: 125.00, cost: 104.00, stock: 95, isWeighed: false, isVatExempt: false, image: '🥛' },
-      { id: 'DAI-005', barcode: '480004004005', plu: '', name: 'Eden Cheese Original 165g', category: 'Dairy & Eggs', unit: 'pc', price: 68.00, cost: 56.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🧀' },
+      { id: 'DAI-005', barcode: '480004004005', plu: '', name: 'Eden Cheese Original Block 165g', category: 'Dairy & Eggs', unit: 'pc', price: 68.00, cost: 56.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🧀' },
       { id: 'DAI-006', barcode: '480004004006', plu: '', name: 'Gardenia Classic White Bread 600g', category: 'Dairy & Eggs', unit: 'pc', price: 85.00, cost: 72.00, stock: 50, isWeighed: false, isVatExempt: false, image: '🍞' },
       { id: 'DAI-007', barcode: '480004004007', plu: '', name: 'Fresh Bakery Pan De Sal (Pack of 10)', category: 'Dairy & Eggs', unit: 'pack', price: 45.00, cost: 30.00, stock: 60, isWeighed: false, isVatExempt: false, image: '🥖' },
 
-      // 🧂 Mantika, Asukal at Rekado (Cooking Essentials)
-      { id: 'COO-001', barcode: '480005005001', plu: '', name: 'Golden Fiesta Cooking Oil 1L Pouch', category: 'Condiments & Cooking', unit: 'pouch', price: 88.00, cost: 72.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🫗' },
-      { id: 'COO-002', barcode: '480005005002', plu: '', name: 'Datu Puti Soy Sauce 1L Bottle', category: 'Condiments & Cooking', unit: 'bottle', price: 48.00, cost: 39.00, stock: 130, isWeighed: false, isVatExempt: false, image: '🍾' },
-      { id: 'COO-003', barcode: '480005005003', plu: '', name: 'Datu Puti White Vinegar 1L Bottle', category: 'Condiments & Cooking', unit: 'bottle', price: 42.00, cost: 34.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🍾' },
-      { id: 'COO-004', barcode: '480005005004', plu: '', name: 'Silver Swan Soy Sauce 1L Pouch', category: 'Condiments & Cooking', unit: 'pouch', price: 46.00, cost: 37.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🫗' },
-      { id: 'COO-005', barcode: '480005005005', plu: '', name: 'UFC Tamis Anghang Banana Ketchup 550g', category: 'Condiments & Cooking', unit: 'bottle', price: 45.00, cost: 36.50, stock: 90, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'COO-006', barcode: '480005005006', plu: '', name: 'Maggi Magic Sarap 8g (Pack of 12)', category: 'Condiments & Cooking', unit: 'pack', price: 65.00, cost: 52.00, stock: 180, isWeighed: false, isVatExempt: false, image: '✨' },
-      { id: 'COO-007', barcode: '480005005007', plu: '', name: 'Ajinomoto Umami Seasoning 100g', category: 'Condiments & Cooking', unit: 'pc', price: 28.00, cost: 22.50, stock: 160, isWeighed: false, isVatExempt: false, image: '🧂' },
-      { id: 'COO-008', barcode: '480005005008', plu: '5008', name: 'Refined White Sugar 1kg', category: 'Condiments & Cooking', unit: 'kg', price: 84.00, cost: 70.00, stock: 150, isWeighed: true, isVatExempt: false, image: '🍬' },
-      { id: 'COO-009', barcode: '480005005009', plu: '5009', name: 'Washed Brown Sugar 1kg', category: 'Condiments & Cooking', unit: 'kg', price: 76.00, cost: 62.00, stock: 140, isWeighed: true, isVatExempt: false, image: '🍬' },
-      { id: 'COO-010', barcode: '480005005010', plu: '', name: 'Fidel Iodized Table Salt 500g', category: 'Condiments & Cooking', unit: 'pc', price: 20.00, cost: 15.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🧂' },
+      // 🧂 Condiments & Cooking Essentials
+      { id: 'COO-001', barcode: '480005005001', plu: '', name: 'Golden Fiesta Cooking Oil 1L Pouch', category: 'Cooking & Condiments', unit: 'pouch', price: 88.00, cost: 72.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🫗' },
+      { id: 'COO-002', barcode: '480005005002', plu: '', name: 'Datu Puti Soy Sauce 1L Bottle', category: 'Cooking & Condiments', unit: 'bottle', price: 48.00, cost: 39.00, stock: 130, isWeighed: false, isVatExempt: false, image: '🍾' },
+      { id: 'COO-003', barcode: '480005005003', plu: '', name: 'Datu Puti White Vinegar 1L Bottle', category: 'Cooking & Condiments', unit: 'bottle', price: 42.00, cost: 34.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🍾' },
+      { id: 'COO-004', barcode: '480005005004', plu: '', name: 'Silver Swan Soy Sauce 1L Pouch', category: 'Cooking & Condiments', unit: 'pouch', price: 46.00, cost: 37.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🫗' },
+      { id: 'COO-005', barcode: '480005005005', plu: '', name: 'UFC Banana Ketchup 550g Bottle', category: 'Cooking & Condiments', unit: 'bottle', price: 45.00, cost: 36.50, stock: 90, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'COO-006', barcode: '480005005006', plu: '', name: 'Maggi Magic Sarap 8g (Pack of 12)', category: 'Cooking & Condiments', unit: 'pack', price: 65.00, cost: 52.00, stock: 180, isWeighed: false, isVatExempt: false, image: '✨' },
+      { id: 'COO-007', barcode: '480005005007', plu: '', name: 'Ajinomoto Umami Seasoning 100g', category: 'Cooking & Condiments', unit: 'pc', price: 28.00, cost: 22.50, stock: 160, isWeighed: false, isVatExempt: false, image: '🧂' },
+      { id: 'COO-008', barcode: '480005005008', plu: '5008', name: 'Refined White Sugar 1kg', category: 'Cooking & Condiments', unit: 'kg', price: 84.00, cost: 70.00, stock: 150, isWeighed: true, isVatExempt: false, image: '🍬' },
+      { id: 'COO-009', barcode: '480005005009', plu: '5009', name: 'Washed Brown Sugar 1kg', category: 'Cooking & Condiments', unit: 'kg', price: 76.00, cost: 62.00, stock: 140, isWeighed: true, isVatExempt: false, image: '🍬' },
+      { id: 'COO-010', barcode: '480005005010', plu: '', name: 'Fidel Iodized Table Salt 500g', category: 'Cooking & Condiments', unit: 'pc', price: 20.00, cost: 15.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🧂' },
 
-      // 🥤 Inumin (Beverages)
+      // 🥤 Beverages & Refreshments
       { id: 'BEV-001', barcode: '480006006001', plu: '', name: 'Coca-Cola 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🥤' },
       { id: 'BEV-002', barcode: '480006006002', plu: '', name: 'Royal Tru-Orange 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍊' },
       { id: 'BEV-003', barcode: '480006006003', plu: '', name: 'Sprite 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 85, isWeighed: false, isVatExempt: false, image: '🍋' },
@@ -168,22 +168,22 @@
       { id: 'BEV-006', barcode: '480006006006', plu: '', name: "Nature's Spring Mineral Water 500ml", category: 'Beverages', unit: 'bottle', price: 15.00, cost: 9.50, stock: 240, isWeighed: false, isVatExempt: false, image: '💧' },
       { id: 'BEV-007', barcode: '480006006007', plu: '', name: "Nature's Spring Purified Water 6L", category: 'Beverages', unit: 'bottle', price: 85.00, cost: 65.00, stock: 70, isWeighed: false, isVatExempt: false, image: '💧' },
       { id: 'BEV-008', barcode: '480006006008', plu: '', name: 'San Miguel Pale Pilsen 330ml Can', category: 'Beverages', unit: 'can', price: 62.00, cost: 48.00, stock: 96, isWeighed: false, isVatExempt: false, image: '🍺' },
-      { id: 'BEV-009', barcode: '480006006009', plu: '', name: 'Red Horse Beer 500ml Can', category: 'Beverages', unit: 'can', price: 68.00, cost: 53.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🐎' },
+      { id: 'BEV-009', barcode: '480006006009', plu: '', name: 'Red Horse Extra Strong Beer 500ml Can', category: 'Beverages', unit: 'can', price: 68.00, cost: 53.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🐎' },
 
-      // 🍪 Chichirya at Biscuits (Snacks & Merienda)
+      // 🍪 Snacks & Biscuits
       { id: 'SNA-001', barcode: '480007007001', plu: '', name: 'SkyFlakes Crackers Big Tub 800g', category: 'Snacks', unit: 'tub', price: 145.00, cost: 118.00, stock: 50, isWeighed: false, isVatExempt: false, image: '🍘' },
-      { id: 'SNA-002', barcode: '480007007002', plu: '', name: 'SkyFlakes Crackers Single 25g (Pack of 10)', category: 'Snacks', unit: 'pack', price: 85.00, cost: 68.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍘' },
-      { id: 'SNA-003', barcode: '480007007003', plu: '', name: 'Piattos Cheese Flavored Potato Crisps 85g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 130, isWeighed: false, isVatExempt: false, image: '🥔' },
-      { id: 'SNA-004', barcode: '480007007004', plu: '', name: 'Nova Country Cheddar Multigrain Snacks 78g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 115, isWeighed: false, isVatExempt: false, image: '🌽' },
+      { id: 'SNA-002', barcode: '480007007002', plu: '', name: 'SkyFlakes Crackers (Pack of 10)', category: 'Snacks', unit: 'pack', price: 85.00, cost: 68.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍘' },
+      { id: 'SNA-003', barcode: '480007007003', plu: '', name: 'Piattos Cheese Potato Crisps 85g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 130, isWeighed: false, isVatExempt: false, image: '🥔' },
+      { id: 'SNA-004', barcode: '480007007004', plu: '', name: 'Nova Country Cheddar Multigrain 78g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 115, isWeighed: false, isVatExempt: false, image: '🌽' },
       { id: 'SNA-005', barcode: '480007007005', plu: '', name: 'Chippy Barbecue Flavor 110g', category: 'Snacks', unit: 'pc', price: 38.00, cost: 30.00, stock: 125, isWeighed: false, isVatExempt: false, image: '🌽' },
       { id: 'SNA-006', barcode: '480007007006', plu: '', name: 'Oishi Prawn Crackers Spicy 60g', category: 'Snacks', unit: 'pc', price: 28.00, cost: 22.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🦐' },
       { id: 'SNA-007', barcode: '480007007007', plu: '', name: 'Nagaraya Garlic Cracker Nuts 160g', category: 'Snacks', unit: 'pack', price: 48.00, cost: 38.00, stock: 85, isWeighed: false, isVatExempt: false, image: '🥜' },
 
-      // 🧼 Panglinis at Sabon (Household & Personal Care)
-      { id: 'HOU-001', barcode: '480008008001', plu: '', name: 'Surf Powder Detergent Blossom Fresh 2kg', category: 'Household', unit: 'bag', price: 235.00, cost: 195.00, stock: 75, isWeighed: false, isVatExempt: false, image: '🧺' },
+      // 🧼 Cleaning & Toiletries
+      { id: 'HOU-001', barcode: '480008008001', plu: '', name: 'Surf Blossom Fresh Detergent Powder 2kg', category: 'Household', unit: 'bag', price: 235.00, cost: 195.00, stock: 75, isWeighed: false, isVatExempt: false, image: '🧺' },
       { id: 'HOU-002', barcode: '480008008002', plu: '', name: 'Ariel Sunrise Fresh Detergent Powder 1.9kg', category: 'Household', unit: 'bag', price: 320.00, cost: 265.00, stock: 60, isWeighed: false, isVatExempt: false, image: '🧺' },
       { id: 'HOU-003', barcode: '480008008003', plu: '', name: 'Downy Sunrise Fresh Fabric Conditioner 800ml', category: 'Household', unit: 'pouch', price: 175.00, cost: 142.00, stock: 85, isWeighed: false, isVatExempt: false, image: '🌸' },
-      { id: 'HOU-004', barcode: '480008008004', plu: '', name: 'Joy Dishwashing Liquid Lemon 790ml Refill', category: 'Household', unit: 'pouch', price: 145.00, cost: 118.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍋' },
+      { id: 'HOU-004', barcode: '480008008004', plu: '', name: 'Joy Lemon Dishwashing Liquid 790ml Refill', category: 'Household', unit: 'pouch', price: 145.00, cost: 118.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍋' },
       { id: 'HOU-005', barcode: '480008008005', plu: '', name: 'Safeguard Pure White Bar Soap 130g', category: 'Household', unit: 'pc', price: 52.00, cost: 41.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🧼' },
       { id: 'HOU-006', barcode: '480008008006', plu: '', name: 'Palmolive Naturals Shampoo 180ml Bottle', category: 'Household', unit: 'bottle', price: 125.00, cost: 98.00, stock: 80, isWeighed: false, isVatExempt: false, image: '🧴' },
       { id: 'HOU-007', barcode: '480008008007', plu: '', name: 'Colgate Triple Action Toothpaste 145g', category: 'Household', unit: 'pc', price: 95.00, cost: 76.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🪥' }
@@ -191,40 +191,40 @@
 
     const CATEGORIES = [
       { id: 'ALL', label: 'All Items', icon: '🛒' },
-      { id: 'Rice', label: '🌾 Bigas (Rice)', icon: '🌾' },
-      { id: 'Produce', label: '🥬 Gulay & Prutas', icon: '🥬' },
-      { id: 'Meat & Seafood', label: '🥩 Karne & Isda', icon: '🥩' },
-      { id: 'Canned & Instant', label: '🥫 De Lata & Noodles', icon: '🥫' },
-      { id: 'Dairy & Eggs', label: '🥛 Gatas, Itlog & Tinapay', icon: '🥛' },
-      { id: 'Condiments & Cooking', label: '🧂 Mantika & Rekado', icon: '🧂' },
-      { id: 'Beverages', label: '🥤 Inumin', icon: '🥤' },
-      { id: 'Snacks', label: '🍪 Chichirya & Biscuits', icon: '🍪' },
-      { id: 'Household', label: '🧼 Sabon & Panglinis', icon: '🧼' }
+      { id: 'Rice & Grains', label: '🌾 Rice & Grains', icon: '🌾' },
+      { id: 'Fresh Produce', label: '🥬 Fresh Produce', icon: '🥬' },
+      { id: 'Meat & Seafood', label: '🥩 Meat & Seafood', icon: '🥩' },
+      { id: 'Canned & Instant', label: '🥫 Canned & Instant', icon: '🥫' },
+      { id: 'Dairy & Eggs', label: '🥛 Dairy, Eggs & Bakery', icon: '🥛' },
+      { id: 'Cooking & Condiments', label: '🧂 Cooking & Condiments', icon: '🧂' },
+      { id: 'Beverages', label: '🥤 Beverages', icon: '🥤' },
+      { id: 'Snacks', label: '🍪 Snacks & Biscuits', icon: '🍪' },
+      { id: 'Household', label: '🧼 Cleaning & Toiletries', icon: '🧼' }
     ];
 
-    // Main App Component
+    // Main POS App Component
     function App() {
       // Products & Inventory State
       const [products, setProducts] = useState(() => {
-        const saved = localStorage.getItem('maharlika_pos_products');
+        const saved = localStorage.getItem('cha_pos_products');
         return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
       });
 
       // Active Cart State
       const [cart, setCart] = useState(() => {
-        const saved = localStorage.getItem('maharlika_pos_cart');
+        const saved = localStorage.getItem('cha_pos_cart');
         return saved ? JSON.parse(saved) : [];
       });
 
-      // Parked (Held) Carts
+      // Parked / Held Carts
       const [parkedOrders, setParkedOrders] = useState(() => {
-        const saved = localStorage.getItem('maharlika_pos_parked');
+        const saved = localStorage.getItem('cha_pos_parked');
         return saved ? JSON.parse(saved) : [];
       });
 
       // Completed Sales Orders History
       const [completedSales, setCompletedSales] = useState(() => {
-        const saved = localStorage.getItem('maharlika_pos_sales');
+        const saved = localStorage.getItem('cha_pos_sales');
         return saved ? JSON.parse(saved) : [];
       });
 
@@ -235,52 +235,51 @@
       // Cashier & Store Details
       const [cashierName, setCashierName] = useState('Cashier 01 - Maria');
       const [storeInfo, setStoreInfo] = useState({
-        name: 'MAHARLIKA SUPERMARKET & GROCERY',
-        branch: 'Branch 04 - Quezon City Metro Manila',
+        name: 'CHA CONVENIENCE STORE',
+        branch: 'Branch 01 — Metro Manila, Philippines',
         tin: '248-912-345-00000 VAT Reg',
         min: 'MIN-202610-8899124',
-        serial: 'SN-POS-PH-99421',
+        serial: 'SN-CHA-PH-99421',
         tel: '(02) 8921-4455 / 0917-882-9090'
       });
 
-      // Customer Type & RA 9994 / RA 10754 Senior Citizen & PWD Discount
+      // Customer Type & Senior Citizen / PWD RA 9994 5% Discount
       const [customerType, setCustomerType] = useState('REGULAR'); // 'REGULAR', 'SENIOR', 'PWD'
       const [seniorId, setSeniorId] = useState('');
       const [seniorName, setSeniorName] = useState('');
       const [includeEcoBag, setIncludeEcoBag] = useState(false); // ₱2.00 bag fee
 
       // Modals
-      const [scaleModalItem, setScaleModalItem] = useState(null); // When weighing an item
+      const [scaleModalItem, setScaleModalItem] = useState(null); // When weighing produce/rice/meat
       const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
       const [lastReceipt, setLastReceipt] = useState(null);
       const [isInventoryOpen, setIsInventoryOpen] = useState(false);
       const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
       const [isParkedModalOpen, setIsParkedModalOpen] = useState(false);
 
-      // Barcode auto-focus ref
+      // Search input ref
       const searchInputRef = useRef(null);
 
-      // Save to LocalStorage
+      // Save states to LocalStorage
       useEffect(() => {
-        localStorage.setItem('maharlika_pos_products', JSON.stringify(products));
+        localStorage.setItem('cha_pos_products', JSON.stringify(products));
       }, [products]);
 
       useEffect(() => {
-        localStorage.setItem('maharlika_pos_cart', JSON.stringify(cart));
+        localStorage.setItem('cha_pos_cart', JSON.stringify(cart));
       }, [cart]);
 
       useEffect(() => {
-        localStorage.setItem('maharlika_pos_parked', JSON.stringify(parkedOrders));
+        localStorage.setItem('cha_pos_parked', JSON.stringify(parkedOrders));
       }, [parkedOrders]);
 
       useEffect(() => {
-        localStorage.setItem('maharlika_pos_sales', JSON.stringify(completedSales));
+        localStorage.setItem('cha_pos_sales', JSON.stringify(completedSales));
       }, [completedSales]);
 
       // Global Keyboard Shortcuts
       useEffect(() => {
         const handleKeyDown = (e) => {
-          // If in modal, don't trigger hotkeys
           if (isCheckoutOpen || scaleModalItem || isInventoryOpen || isShiftModalOpen || isParkedModalOpen) {
             if (e.key === 'Escape') {
               setIsCheckoutOpen(false);
@@ -314,7 +313,7 @@
         return () => window.removeEventListener('keydown', handleKeyDown);
       }, [cart, isCheckoutOpen, scaleModalItem, isInventoryOpen, isShiftModalOpen, isParkedModalOpen]);
 
-      // Filtered Catalog
+      // Filtered Product Catalog
       const filteredProducts = useMemo(() => {
         return products.filter(p => {
           const matchCat = selectedCategory === 'ALL' || p.category === selectedCategory;
@@ -328,20 +327,20 @@
         });
       }, [products, selectedCategory, searchQuery]);
 
-      // Add to Cart
+      // Add Product to Cart
       const handleProductClick = (product) => {
         if (product.stock <= 0) {
-          alert(`Ma'am/Sir, out of stock na po ang "${product.name}".`);
+          alert(`Sorry, "${product.name}" is currently out of stock.`);
           return;
         }
 
-        // If product is weighed (sold per kg), open the Weighing Scale Simulator
+        // Weighed produce/meat/rice triggers Digital Scale Modal
         if (product.isWeighed) {
           setScaleModalItem(product);
           return;
         }
 
-        // Otherwise add 1 unit or increment existing
+        // Standard unit item
         setCart(prev => {
           const existing = prev.find(item => item.id === product.id);
           if (existing) {
@@ -359,7 +358,7 @@
         });
       };
 
-      // Confirm Weighed item from Scale Modal
+      // Add Weighed Item from Scale Modal
       const handleAddWeighedItem = (product, weightInKg) => {
         if (weightInKg <= 0) return;
         setCart(prev => {
@@ -383,7 +382,7 @@
         setScaleModalItem(null);
       };
 
-      // Modify Cart Quantity
+      // Update Cart Item Quantity
       const updateCartQty = (id, newQty) => {
         if (newQty <= 0) {
           removeFromCart(id);
@@ -408,7 +407,7 @@
 
       const clearCart = () => {
         if (cart.length === 0) return;
-        if (confirm('Sigurado po ba kayong i-clear ang kasalukuyang cart?')) {
+        if (confirm('Are you sure you want to clear the current cart?')) {
           setCart([]);
           setCustomerType('REGULAR');
           setSeniorId('');
@@ -417,10 +416,10 @@
         }
       };
 
-      // Park Cart (Hold Order)
+      // Hold / Park Order
       const parkCurrentCart = () => {
         if (cart.length === 0) return;
-        const customerNote = prompt('Ilagay ang Pangalan o Deskripsyon ng Mamimili (e.g. Cart #3, Mama na naka-blue):', `Customer #${parkedOrders.length + 1}`);
+        const customerNote = prompt('Enter Customer Name or Cart Label (e.g. Cart #3, Lady in Blue Jacket):', `Customer #${parkedOrders.length + 1}`);
         if (!customerNote) return;
 
         const newParked = {
@@ -442,10 +441,10 @@
         setIncludeEcoBag(false);
       };
 
-      // Recall Parked Cart
+      // Recall Parked Order
       const recallParkedOrder = (parked) => {
         if (cart.length > 0) {
-          if (!confirm('May laman ang kasalukuyang cart. Nais mo bang i-park muna ito o palitan? Pindutin ang OK upang ipalit.')) {
+          if (!confirm('The current cart has items. Do you want to replace it with this held order? Click OK to proceed.')) {
             return;
           }
         }
@@ -458,7 +457,7 @@
         setIsParkedModalOpen(false);
       };
 
-      // Philippine BIR VAT & Totals Calculation
+      // BIR VAT & Philippine Tax Calculations
       const totals = useMemo(() => {
         let grossSubtotal = 0;
         let vatExemptGross = 0;
@@ -482,7 +481,6 @@
         // Senior Citizen / PWD 5% Basic Necessities and Prime Commodities Discount
         let scDiscount = 0;
         if (customerType === 'SENIOR' || customerType === 'PWD') {
-          // RA 9994 / RA 10754 gives 5% discount on grocery basic necessities
           scDiscount = Number((grossSubtotal * 0.05).toFixed(2));
         }
 
@@ -518,7 +516,7 @@
           storeInfo: { ...storeInfo }
         };
 
-        // Deduct inventory
+        // Deduct inventory stock
         setProducts(prev => prev.map(p => {
           const bought = cart.find(c => c.id === p.id);
           if (bought) {
@@ -530,7 +528,7 @@
           return p;
         }));
 
-        // Add to completed sales
+        // Add to completed sales history
         setCompletedSales(prev => [transactionRecord, ...prev]);
 
         // Open Thermal Receipt modal
@@ -547,11 +545,12 @@
 
       return (
         <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 select-none">
+          
           {/* Top POS Navigation Bar */}
           <header className="h-14 border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between z-20 shrink-0">
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center shadow-lg shadow-emerald-950/40 border border-emerald-500/30">
-                <span className="text-xl">🛒</span>
+                <span className="text-xl">🏪</span>
               </div>
               <div>
                 <h1 className="font-bold text-sm tracking-wide text-emerald-400 flex items-center gap-2">
@@ -575,7 +574,7 @@
                     ? 'bg-amber-950/50 border-amber-600/60 text-amber-300 animate-pulse'
                     : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
                 }`}
-                title="Parked / Held Carts (F4)"
+                title="Hold / Parked Orders (F4)"
               >
                 <span>⏸️</span>
                 <span>Hold ({parkedOrders.length})</span>
@@ -595,7 +594,7 @@
               <button
                 onClick={() => setIsShiftModalOpen(true)}
                 className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
-                title="Daily Shift Sales & Z-Report (F9)"
+                title="Shift Sales & Z-Report (F9)"
               >
                 <span>📊</span>
                 <span>Shift Report</span>
@@ -632,7 +631,6 @@
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        // If exact barcode matched or single product found, add immediately!
                         if (filteredProducts.length === 1) {
                           handleProductClick(filteredProducts[0]);
                           setSearchQuery('');
@@ -654,20 +652,20 @@
 
                 <button
                   onClick={() => {
-                    const pluInput = prompt('Ilagay ang Produce PLU Code (Halimbawa: 4011 para sa Saging, 2001 Sibuyas):');
+                    const pluInput = prompt('Enter Produce PLU Code (e.g. 4011 for Banana, 2001 for Red Onion):');
                     if (pluInput) {
                       const found = products.find(p => p.plu === pluInput.trim());
                       if (found) {
                         handleProductClick(found);
                       } else {
-                        alert(`Walang natagpuang produkto para sa PLU Code: ${pluInput}`);
+                        alert(`No product found with PLU Code: ${pluInput}`);
                       }
                     }
                   }}
                   className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-emerald-400 flex items-center gap-1.5 shrink-0"
                 >
                   <span>🔢</span>
-                  <span>PLU Entry</span>
+                  <span>PLU Code</span>
                 </button>
               </div>
 
@@ -694,8 +692,8 @@
                 {filteredProducts.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12">
                     <span className="text-4xl mb-2">🔍</span>
-                    <p className="text-sm font-medium">Walang natagpuang produkto sa paghahanap.</p>
-                    <p className="text-xs text-slate-600 mt-1">Subukan i-type ang barcode o pangalan.</p>
+                    <p className="text-sm font-medium">No items found matching your search.</p>
+                    <p className="text-xs text-slate-600 mt-1">Try searching by barcode or item name.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
@@ -773,7 +771,7 @@
               <div className="p-3 bg-slate-900 border-b border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Mamimili / Discount:</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Customer & Discount:</span>
                   </div>
                   <span className="text-xs font-mono text-emerald-400 font-semibold">
                     {cart.reduce((sum, item) => sum + (item.isWeighed ? 1 : item.qty), 0)} {cart.length === 1 ? 'item' : 'items'}
@@ -799,12 +797,12 @@
 
                   <button
                     onClick={() => {
-                      const id = prompt('Ilagay ang Senior Citizen OSCA ID No.:', seniorId);
+                      const id = prompt('Enter Senior Citizen OSCA ID No.:', seniorId);
                       if (id !== null) {
                         setCustomerType('SENIOR');
                         setSeniorId(id);
                         if (!seniorName) {
-                          const name = prompt('Pangalan ng Senior Citizen:');
+                          const name = prompt('Enter Senior Citizen Full Name:');
                           if (name) setSeniorName(name);
                         }
                       }
@@ -821,12 +819,12 @@
 
                   <button
                     onClick={() => {
-                      const id = prompt('Ilagay ang PWD ID No.:', seniorId);
+                      const id = prompt('Enter PWD ID No.:', seniorId);
                       if (id !== null) {
                         setCustomerType('PWD');
                         setSeniorId(id);
                         if (!seniorName) {
-                          const name = prompt('Pangalan ng PWD Customer:');
+                          const name = prompt('Enter PWD Customer Full Name:');
                           if (name) setSeniorName(name);
                         }
                       }
@@ -872,9 +870,9 @@
                 {cart.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-500 py-16">
                     <span className="text-4xl mb-3">🛍️</span>
-                    <p className="text-sm font-semibold text-slate-400">Walang laman ang cart</p>
+                    <p className="text-sm font-semibold text-slate-400">Cart is empty</p>
                     <p className="text-xs text-slate-500 mt-1 text-center max-w-xs">
-                      Pumili ng produkto sa kaliwa, i-scan ang barcode, o i-type ang PLU code.
+                      Scan a barcode, enter a PLU code, or click an item on the left to add.
                     </p>
                   </div>
                 ) : (
@@ -910,7 +908,7 @@
                         {item.isWeighed ? (
                           <button
                             onClick={() => {
-                              const newWeight = prompt(`Baguhin ang timbang para sa ${item.name} (sa kg):`, item.qty);
+                              const newWeight = prompt(`Adjust weight for ${item.name} (in kg):`, item.qty);
                               if (newWeight && !isNaN(newWeight)) {
                                 updateCartQty(item.id, parseFloat(newWeight));
                               }
@@ -946,7 +944,7 @@
                         <button
                           onClick={() => removeFromCart(item.id)}
                           className="text-slate-500 hover:text-red-400 text-sm pl-1"
-                          title="Alisin ang produkto"
+                          title="Remove item"
                         >
                           ✕
                         </button>
@@ -962,7 +960,7 @@
                 <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer p-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700">
                   <div className="flex items-center gap-2">
                     <span>🛍️</span>
-                    <span>Sando Bag / Eco Bag (+₱2.00)</span>
+                    <span>Plastic / Eco Bag (+₱2.00)</span>
                   </div>
                   <input
                     type="checkbox"
@@ -987,7 +985,7 @@
                     <span className="font-mono">{formatPHP(totals.vatAmount)}</span>
                   </div>
                   <div className="flex justify-between text-[11px] text-slate-500">
-                    <span>VAT-Exempt Produce/Meat Sales:</span>
+                    <span>VAT-Exempt Fresh Goods:</span>
                     <span className="font-mono">{formatPHP(totals.vatExemptGross)}</span>
                   </div>
 
@@ -1006,7 +1004,7 @@
                   )}
 
                   <div className="flex justify-between items-baseline pt-2 border-t border-slate-800">
-                    <span className="font-bold text-sm text-slate-100">Kabuuan (Total Due):</span>
+                    <span className="font-bold text-sm text-slate-100">Total Amount Due:</span>
                     <span className="font-extrabold text-2xl text-emerald-400 font-mono">
                       {formatPHP(totals.totalDue)}
                     </span>
@@ -1037,7 +1035,7 @@
                     disabled={cart.length === 0}
                     className="col-span-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-1.5"
                   >
-                    <span>Bayad (F12)</span>
+                    <span>Checkout (F12)</span>
                     <span>➜</span>
                   </button>
                 </div>
@@ -1169,7 +1167,7 @@
                 </div>
 
                 <div className="flex justify-between items-center text-xs text-slate-400 font-mono border-t border-emerald-900/40 pt-2 mt-2">
-                  <span>Presyo: {formatPHP(item.price)}/kg</span>
+                  <span>Price: {formatPHP(item.price)}/kg</span>
                   <span className="text-emerald-300 font-bold text-base">
                     Total: {formatPHP(lineTotal)}
                   </span>
@@ -1209,7 +1207,7 @@
                   value={weight}
                   onChange={(e) => setWeight(Math.max(0.01, parseFloat(e.target.value) || 0))}
                   className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
-                  placeholder="I-type ang timbang (kg)"
+                  placeholder="Enter weight (kg)"
                 />
                 <button
                   onClick={() => setWeight(1.000)}
@@ -1221,18 +1219,18 @@
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-4 bg-slate-850 border-t border-slate-800 flex justify-end gap-3">
+            <div className="p-4 bg-slate-855 border-t border-slate-800 flex justify-end gap-3">
               <button
                 onClick={onClose}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-300"
               >
-                Kanselahin
+                Cancel
               </button>
               <button
                 onClick={() => onConfirm(weight)}
                 className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950 flex items-center gap-1.5"
               >
-                <span>Ilagay sa Cart</span>
+                <span>Add to Cart</span>
                 <span>({formatPHP(lineTotal)})</span>
               </button>
             </div>
@@ -1279,7 +1277,7 @@
 
       const submitPayment = () => {
         if (method === 'CASH' && !isSufficient) {
-          alert('Kulang po ang ibinayad na cash!');
+          alert('Tendered cash is less than the total due!');
           return;
         }
 
@@ -1298,9 +1296,9 @@
             {/* Header */}
             <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-base text-slate-100">Bayad at Pag-checkout</h3>
+                <h3 className="font-bold text-base text-slate-100">Payment & Checkout</h3>
                 <p className="text-xs text-slate-400">
-                  Kabuuang Babayaran: <span className="font-bold text-emerald-400 font-mono">{formatPHP(totalDue)}</span>
+                  Total Amount Due: <span className="font-bold text-emerald-400 font-mono">{formatPHP(totalDue)}</span>
                 </p>
               </div>
               <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
@@ -1313,7 +1311,7 @@
                   { id: 'CASH', label: '💵 Cash', sub: 'Philippine Peso' },
                   { id: 'GCASH', label: '📱 GCash', sub: 'E-Wallet QR' },
                   { id: 'MAYA', label: '🟣 Maya', sub: 'E-Wallet / Card' },
-                  { id: 'CARD', label: '💳 Debit / Card', sub: 'BDO / Maya Terminal' }
+                  { id: 'CARD', label: '💳 Debit / Card', sub: 'Terminal POS' }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -1341,7 +1339,7 @@
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
                       <label className="text-xs text-slate-400 font-medium block mb-1">
-                        Ibinayad na Cash (Tendered):
+                        Cash Tendered:
                       </label>
                       <div className="flex items-center">
                         <span className="text-emerald-400 text-xl font-bold font-mono mr-1">₱</span>
@@ -1358,7 +1356,7 @@
                     <div className={`p-4 border rounded-xl flex flex-col justify-between ${
                       isSufficient ? 'bg-emerald-950/30 border-emerald-600/40' : 'bg-red-950/30 border-red-600/40'
                     }`}>
-                      <span className="text-xs font-medium text-slate-400">Sukli (Change Due):</span>
+                      <span className="text-xs font-medium text-slate-400">Change Due:</span>
                       <span className={`font-mono text-3xl font-extrabold ${isSufficient ? 'text-emerald-400' : 'text-red-400'}`}>
                         {formatPHP(changeDue)}
                       </span>
@@ -1368,7 +1366,7 @@
                   {/* Quick Philippine Peso Bill Buttons */}
                   <div>
                     <label className="text-xs text-slate-400 font-medium block mb-2">
-                      Mabilisang Pindot ng Salaping Papel (Exact / Bills):
+                      Quick Peso Banknotes (Exact / Bills):
                     </label>
                     <div className="grid grid-cols-4 gap-2">
                       <button
@@ -1425,11 +1423,11 @@
                     </div>
                   </div>
 
-                  {/* Sukli Breakdown Guide for Cashier */}
+                  {/* Change Breakdown Guide for Cashier */}
                   {changeDue > 0 && (
                     <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
                       <span className="text-[11px] font-semibold text-slate-400 block mb-1.5 uppercase tracking-wider">
-                        💡 Gabay sa Pagbibilang ng Sukli:
+                        💡 Cashier Change Denomination Guide:
                       </span>
                       <div className="flex flex-wrap gap-2">
                         {changeBreakdown.map(item => (
@@ -1454,10 +1452,9 @@
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-blue-400">Scan to Pay via GCash QR</h4>
-                    <p className="text-xs text-slate-400 mt-1">Merchant: Maharlika Supermarket (0917-882-9090)</p>
+                    <p className="text-xs text-slate-400 mt-1">Merchant: CHA Convenience Store (0917-882-9090)</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl shadow-md">
-                    {/* Simulated QR Code Graphic */}
                     <div className="w-40 h-40 bg-slate-100 flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-400 rounded">
                       <span className="text-4xl">🏁</span>
                       <span className="text-[10px] text-slate-800 font-mono font-bold mt-1">GCASH PH QR CODE</span>
@@ -1470,7 +1467,7 @@
                       type="text"
                       value={referenceNo}
                       onChange={(e) => setReferenceNo(e.target.value)}
-                      placeholder="Halimbawa: 9024 1123 4819"
+                      placeholder="e.g. 9024 1123 4819"
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono"
                     />
                   </div>
@@ -1485,7 +1482,7 @@
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-emerald-400">Scan to Pay via Maya QR</h4>
-                    <p className="text-xs text-slate-400 mt-1">Merchant: Maharlika Supermarket POS</p>
+                    <p className="text-xs text-slate-400 mt-1">Merchant: CHA Convenience Store POS</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl shadow-md">
                     <div className="w-40 h-40 bg-slate-100 flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-400 rounded">
@@ -1500,7 +1497,7 @@
                       type="text"
                       value={referenceNo}
                       onChange={(e) => setReferenceNo(e.target.value)}
-                      placeholder="Halimbawa: MY-8829-410"
+                      placeholder="e.g. MY-8829-410"
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono"
                     />
                   </div>
@@ -1513,17 +1510,17 @@
                   <div className="flex items-center space-x-3">
                     <span className="text-3xl">💳</span>
                     <div>
-                      <h4 className="font-bold text-sm text-slate-200">BDO / Maya Terminal POS</h4>
+                      <h4 className="font-bold text-sm text-slate-200">BDO / Maya POS Terminal</h4>
                       <p className="text-xs text-slate-400">Swipe, Dip chip, or Tap contactless card.</p>
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">Terminal Approval Code / Auth Code:</label>
+                    <label className="text-xs text-slate-400 block mb-1">Terminal Approval / Auth Code:</label>
                     <input
                       type="text"
                       value={referenceNo}
                       onChange={(e) => setReferenceNo(e.target.value)}
-                      placeholder="Hal. 082491"
+                      placeholder="e.g. 082491"
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono"
                     />
                   </div>
@@ -1537,7 +1534,7 @@
                 onClick={onClose}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-300"
               >
-                Bumalik
+                Back
               </button>
               
               <button
@@ -1545,7 +1542,7 @@
                 disabled={method === 'CASH' && !isSufficient}
                 className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-950 flex items-center gap-2"
               >
-                <span>Tapusin at Mag-print ng Resibo</span>
+                <span>Complete & Print Receipt</span>
                 <span>🖨️</span>
               </button>
             </div>
@@ -1555,7 +1552,7 @@
     }
 
     // =========================================================
-    // 🖨️ BIR COMPLIANT THERMAL RECEIPT MODAL
+    // 🖨️ BIR COMPLIANT 80mm THERMAL RECEIPT MODAL
     // =========================================================
     function ReceiptModal({ receipt, onClose }) {
       return (
@@ -1564,7 +1561,7 @@
             
             {/* Header */}
             <div className="p-3 bg-slate-850 border-b border-slate-800 flex items-center justify-between no-print">
-              <h3 className="font-bold text-sm text-slate-100">Official Sales Receipt</h3>
+              <h3 className="font-bold text-sm text-slate-100">Official Sales Invoice</h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => window.print()}
@@ -1584,7 +1581,7 @@
               >
                 {/* Store Header */}
                 <div className="text-center pb-3 border-b border-dashed border-slate-400">
-                  <h2 className="font-bold text-sm tracking-tight">{receipt.storeInfo.name}</h2>
+                  <h2 className="font-bold text-base tracking-tight">{receipt.storeInfo.name}</h2>
                   <p className="text-[10px] text-slate-600 mt-0.5">{receipt.storeInfo.branch}</p>
                   <p className="text-[9px] text-slate-500">VAT Reg TIN: {receipt.storeInfo.tin}</p>
                   <p className="text-[9px] text-slate-500">Machine Serial: {receipt.storeInfo.serial}</p>
@@ -1640,7 +1637,7 @@
 
                   {receipt.totals.bagFee > 0 && (
                     <div className="flex justify-between text-[10px]">
-                      <span className="w-1/2">Eco / Sando Bag Fee</span>
+                      <span className="w-1/2">Plastic / Eco Bag Fee</span>
                       <span className="w-1/4 text-center">1 pc</span>
                       <span className="w-1/4 text-right font-mono font-semibold">{formatPHP(receipt.totals.bagFee)}</span>
                     </div>
@@ -1689,7 +1686,7 @@
                   </div>
                 </div>
 
-                {/* Philippine VAT Breakdown Breakdown */}
+                {/* Philippine VAT Breakdown */}
                 <div className="py-2 border-b border-dashed border-slate-400 space-y-0.5 text-[9px] text-slate-600">
                   <div className="font-bold text-[10px] text-slate-800">TAX BREAKDOWN:</div>
                   <div className="flex justify-between">
@@ -1701,7 +1698,7 @@
                     <span className="font-mono">{formatPHP(receipt.totals.vatAmount)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>VAT-Exempt Sales:</span>
+                    <span>VAT-Exempt Fresh Produce:</span>
                     <span className="font-mono">{formatPHP(receipt.totals.vatExemptGross)}</span>
                   </div>
                   <div className="flex justify-between">
@@ -1716,7 +1713,7 @@
                     ||||| | |||| |||||| |||| | |||||
                   </div>
                   <p className="font-mono">{receipt.orderNumber}</p>
-                  <p className="font-semibold text-slate-800 mt-1">Maraming Salamat Po sa Inyong Pagtangkilik!</p>
+                  <p className="font-semibold text-slate-800 mt-1">Thank you for shopping with us!</p>
                   <p className="text-[8px] text-slate-500">
                     THIS INVOICE/RECEIPT SHALL BE VALID FOR FIVE (5) YEARS FROM THE DATE OF THE PERMIT TO USE.
                   </p>
@@ -1730,7 +1727,7 @@
                 onClick={onClose}
                 className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold"
               >
-                Isara
+                Close
               </button>
             </div>
           </div>
@@ -1739,7 +1736,7 @@
     }
 
     // =========================================================
-    // 📦 INVENTORY MANAGEMENT MODAL
+    // 📦 INVENTORY & PRODUCT MANAGEMENT MODAL
     // =========================================================
     function InventoryModal({ products, setProducts, onClose }) {
       const [filter, setFilter] = useState('');
@@ -1791,7 +1788,7 @@
             <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="text-xl">📦</span>
-                <h3 className="font-bold text-sm text-slate-100">Pamamahala ng Imbentaryo at Presyo (Inventory SRP)</h3>
+                <h3 className="font-bold text-sm text-slate-100">Inventory & Pricing Management (SRP)</h3>
               </div>
               <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
@@ -1802,11 +1799,11 @@
                 type="text"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="I-filter ayon sa pangalan, barcode, o PLU..."
+                placeholder="Filter by product name, barcode, or PLU..."
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
               />
               <span className="text-xs text-slate-400 font-mono shrink-0">
-                {filtered.length} produkto
+                {filtered.length} products
               </span>
             </div>
 
@@ -1815,13 +1812,13 @@
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-950 text-slate-400 sticky top-0 border-b border-slate-800">
                   <tr>
-                    <th className="p-3">Produkto</th>
-                    <th className="p-3">Kategorya</th>
+                    <th className="p-3">Product</th>
+                    <th className="p-3">Category</th>
                     <th className="p-3 font-mono">Barcode / PLU</th>
-                    <th className="p-3 text-right">Puhunan (Cost)</th>
-                    <th className="p-3 text-right">Presyo (SRP)</th>
+                    <th className="p-3 text-right">Cost Price</th>
+                    <th className="p-3 text-right">Selling Price (SRP)</th>
                     <th className="p-3 text-right">Stock</th>
-                    <th className="p-3 text-center">Aksyon</th>
+                    <th className="p-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
@@ -1887,7 +1884,7 @@
                               <button
                                 onClick={() => restockItem(p.id, p.isWeighed ? 20 : 50)}
                                 className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded text-[11px]"
-                                title="Quick restock"
+                                title="Quick Restock"
                               >
                                 +Restock
                               </button>
@@ -1904,13 +1901,13 @@
             {/* Footer */}
             <div className="p-3 bg-slate-850 border-t border-slate-800 flex justify-between items-center">
               <span className="text-xs text-slate-400">
-                💡 Ang mga bagong presyo at stock ay awtomatikong nai-save sa browser memory.
+                💡 Stock levels and prices are automatically saved to local storage.
               </span>
               <button
                 onClick={onClose}
                 className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold text-slate-200"
               >
-                Isara
+                Close
               </button>
             </div>
           </div>
@@ -1967,7 +1964,7 @@
               <div className="flex items-center space-x-2">
                 <span className="text-xl">📊</span>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-100">Ulat ng Shift at Benta (Z-Report)</h3>
+                  <h3 className="font-bold text-sm text-slate-100">Shift Sales & Z-Report</h3>
                   <p className="text-xs text-slate-400">Cashier: {cashierName} • {new Date().toLocaleDateString('en-PH')}</p>
                 </div>
               </div>
@@ -1978,13 +1975,13 @@
             <div className="p-5 overflow-y-auto space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
-                  <span className="text-xs text-slate-400">Kabuuang Benta (Gross Sales):</span>
+                  <span className="text-xs text-slate-400">Total Gross Sales:</span>
                   <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">
                     {formatPHP(shiftSummary.totalRevenue)}
                   </div>
                 </div>
                 <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
-                  <span className="text-xs text-slate-400">Bilang ng Transaksyon:</span>
+                  <span className="text-xs text-slate-400">Transactions Count:</span>
                   <div className="text-2xl font-bold font-mono text-slate-100 mt-1">
                     {shiftSummary.totalOrders}
                   </div>
@@ -1997,14 +1994,14 @@
                 </div>
               </div>
 
-              {/* Payment Tender Breakdown */}
+              {/* Payment Collections Breakdown */}
               <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
                 <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider">
-                  Koleksyon Ayon sa Paraan ng Pagbabayad:
+                  Collections by Payment Method:
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
                   <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
-                    <span className="text-slate-400 block">💵 Cash sa Drawer:</span>
+                    <span className="text-slate-400 block">💵 Cash in Drawer:</span>
                     <span className="font-bold font-mono text-emerald-400">{formatPHP(shiftSummary.totalCash)}</span>
                   </div>
                   <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
@@ -2016,7 +2013,7 @@
                     <span className="font-bold font-mono text-emerald-400">{formatPHP(shiftSummary.totalMaya)}</span>
                   </div>
                   <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
-                    <span className="text-slate-400 block">💳 Debit / Credit:</span>
+                    <span className="text-slate-400 block">💳 Credit / Debit:</span>
                     <span className="font-bold font-mono text-purple-400">{formatPHP(shiftSummary.totalCard)}</span>
                   </div>
                 </div>
@@ -2032,11 +2029,11 @@
                   <span className="font-mono text-slate-200">{formatPHP(shiftSummary.totalVat)}</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>VAT-Exempt Fresh Agricultural Sales:</span>
+                  <span>VAT-Exempt Fresh Produce:</span>
                   <span className="font-mono text-slate-200">{formatPHP(shiftSummary.totalVatExempt)}</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>Senior / PWD 5% Discounts Given:</span>
+                  <span>Senior Citizen / PWD 5% Discounts:</span>
                   <span className="font-mono text-amber-400">-{formatPHP(shiftSummary.totalDiscounts)}</span>
                 </div>
               </div>
@@ -2048,7 +2045,7 @@
                 onClick={onClose}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-200"
               >
-                Isara
+                Close
               </button>
             </div>
           </div>
@@ -2067,7 +2064,7 @@
             <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="text-xl">⏸️</span>
-                <h3 className="font-bold text-sm text-slate-100">Mga Nakabinbing Cart (Held Orders)</h3>
+                <h3 className="font-bold text-sm text-slate-100">Held / Parked Orders</h3>
               </div>
               <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
@@ -2076,7 +2073,7 @@
               {orders.length === 0 ? (
                 <div className="text-center py-10 text-slate-500">
                   <span className="text-3xl">🧺</span>
-                  <p className="text-xs mt-2">Walang nakabinbing order sa kasalukuyan.</p>
+                  <p className="text-xs mt-2">No held orders currently parked.</p>
                 </div>
               ) : (
                 orders.map(order => {
@@ -2091,7 +2088,7 @@
                           <span className="text-[10px] text-slate-500 font-mono">{order.timestamp}</span>
                         </div>
                         <p className="text-xs text-slate-400 mt-1">
-                          {itemCount} mga aytem • <span className="font-mono text-emerald-400 font-bold">{formatPHP(orderTotal)}</span>
+                          {itemCount} items • <span className="font-mono text-emerald-400 font-bold">{formatPHP(orderTotal)}</span>
                         </p>
                       </div>
 
@@ -2100,12 +2097,12 @@
                           onClick={() => onRecall(order)}
                           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow"
                         >
-                          Ibalik (Recall)
+                          Recall Order
                         </button>
                         <button
                           onClick={() => onDelete(order.id)}
                           className="text-slate-500 hover:text-red-400 text-sm p-1"
-                          title="Tanggalin"
+                          title="Remove"
                         >
                           ✕
                         </button>
@@ -2121,7 +2118,7 @@
                 onClick={onClose}
                 className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold text-slate-200"
               >
-                Isara
+                Close
               </button>
             </div>
           </div>
@@ -2129,7 +2126,7 @@
       );
     }
 
-    // Render React App
+    // Render React Application
     ReactDOM.render(<App />, document.getElementById('root'));
   </script>
 </body>

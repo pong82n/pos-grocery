@@ -1,11 +1,11 @@
 {
-  "name": "Maharlika Supermarket POS (PHP)",
-  "short_name": "GroceryPOS",
+  "name": "CHA Convenience Store POS (PHP)",
+  "short_name": "ChaPOS",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#064e3b",
   "theme_color": "#047857",
-  "description": "Philippine Grocery Store & Supermarket Point of Sale with Philippine Peso (₱), BIR VAT Compliance, and Barcode Scanning",
+  "description": "CHA Convenience Store Point of Sale with Philippine Peso (₱), BIR VAT Compliance, and Barcode Scanning",
   "icons": [
     {
       "src": "logo.svg",
