@@ -1,11 +1,41 @@
 # 🏪 CHA CONVENIENCE STORE — Point of Sale (POS)
 
-A full-featured, zero-setup **Convenience Store Point of Sale (POS)** web application built with **React 18** and **Tailwind CSS**, designed for Philippine convenience stores and supermarkets with **Philippine Peso (₱ / PHP)** currency, DTI 2026 Suggested Retail Prices (SRP), and BIR VAT compliance in the **English language**.
+A full-featured, zero-setup **Convenience Store Point of Sale (POS)** web application built with **React 18** and **Tailwind CSS**, designed for Philippine convenience stores and supermarkets with **Philippine Peso (₱ / PHP)** currency, DTI Suggested Retail Prices (SRP), and BIR VAT compliance in the **English language**.
+
+📍 **Address**: Bankers Subd. Antipolo City, Rizal  
+📞 **Tel**: (02) 8921-4455 / 0917-882-9090  
 
 ---
 
 ## 🚀 Instant Zero-Setup Launch
 Open [`index.html`](./index.html) directly in any modern web browser (Google Chrome, Microsoft Edge, Safari, Mozilla Firefox) — **no build step, no Node.js, and no server configuration required**.
+
+---
+
+## ✨ What's New & Core Capabilities
+
+### 1. ➕ Auto-Generated Barcode Items with Editable Prices (`F3`)
+- **Auto EAN-13 Generator**: Generates authentic 13-digit Philippine barcodes (prefix `480` + 9 unique digits + checksum) with one click of **⚡ Generate New**.
+- **Editable Pricing**: Easily customize Selling Price (₱ SRP) and Cost Price for live margin tracking.
+- **Weighed (/kg) & Tax Settings**: Toggle whether the item is sold by weight (activating the digital scale) and whether it is VAT-Exempt (fresh agricultural/marine goods) or VATable (12%).
+- Once created, new items appear immediately in the product catalog and can be scanned, searched, or weighed.
+
+### 2. 👥 Cashier Management, Log-in & Log-Out
+- **Cashier List Management**:
+  - Add new cashiers and staff with customized roles (*Senior Cashier*, *Cashier*, *Shift Supervisor*, *Store Manager*) and unique 4-digit PINs.
+  - Remove cashiers with safety validation (cannot delete the active cashier).
+  - Switch active cashier on the fly.
+- **Log-in & Log-Out System**:
+  - Click **🔒 Log Out** in the top navigation bar to lock the POS register.
+  - Interactive PIN lock screen with numeric touchscreen keypad to select cashier and unlock the register.
+  - Active cashier's name and ID are stamped on all completed transactions, thermal receipts, and shift sales reports.
+
+### 3. 📱 Mobile App Install QR Code
+- Tap **📱 Mobile App** in the navigation bar to bring up an interactive high-resolution QR code.
+- Scan with any smartphone or tablet camera (Android or iOS) to open the POS immediately on the local network or web.
+- **Android**: Tap Chrome menu `⋮` &gt; tap **"Install app"** or **"Add to Home screen"**.
+- **iPhone / iPad**: Tap Safari Share button `⬆` &gt; tap **"Add to Home Screen"**.
+- Supports 100% offline capability via Service Worker (`sw.js`).
 
 ---
 
@@ -49,23 +79,8 @@ Open [`index.html`](./index.html) directly in any modern web browser (Google Chr
 ## 🖨️ BIR Compliant 80mm / 58mm Thermal Receipt Printing
 
 - Formatted for standard 80mm thermal receipt printers (Epson, Xprinter, Sunmi, etc.).
-- Complete Official Sales Invoice layout with Store TIN, Machine Serial, MIN, Cashier name, itemized sales with tax identifiers `(V)` and `(E)`, VAT analysis, payment tendered, change due, and return barcode.
+- Complete Official Sales Invoice layout with Store Address (*Bankers Subd. Antipolo City, Rizal*), TIN, Machine Serial, MIN, Cashier name, itemized sales with tax identifiers `(V)` and `(E)`, VAT analysis, payment tendered, change due, and return barcode.
 - Click **Print Receipt** or press `Ctrl + P` for standard `@media print` styling.
-
----
-
-## 📦 Inventory Management & Shift Z-Reports
-
-- **Inventory Modal (`F8`)**:
-  - Live stock deductions upon checkout.
-  - Low-stock visual warning badges (`<= 10`).
-  - In-app price editor and one-click `+Restock` actions.
-- **Shift Z-Report (`F9`)**:
-  - Real-time cashier end-of-shift reconciliation.
-  - Cash in drawer breakdown vs. GCash, Maya, and Card collections.
-  - BIR VAT totals and Senior/PWD discounts audit.
-- **Hold / Park Orders (`F4`)**:
-  - Hold multiple customer carts with custom labels when a shopper forgets their wallet or grabs additional items.
 
 ---
 
@@ -74,13 +89,9 @@ Open [`index.html`](./index.html) directly in any modern web browser (Google Chr
 | Shortcut | Function |
 | :--- | :--- |
 | **`F2`** | Focus Barcode / Search Box |
+| **`F3`** | Open Add Barcode Item Modal |
 | **`F4`** | View Parked / Held Carts |
 | **`F8`** | Open Inventory & Price Manager |
 | **`F9`** | Open Daily Shift & Z-Report |
 | **`F12`** | Proceed to Checkout |
 | **`Esc`** | Close any open modal |
-
----
-
-## 📱 PWA & Offline Support
-- Built-in `manifest.json` and `sw.js` (Service Worker) allows full offline functionality and home screen installation on Windows, Android, iOS, and macOS tablets and POS terminals.

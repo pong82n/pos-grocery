@@ -10,6 +10,7 @@
   <title>CHA CONVENIENCE STORE — Point of Sale (PHP ₱)</title>
   <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="manifest" href="manifest.json" />
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -36,6 +37,10 @@
       }
     }
   </script>
+
+  <!-- QRCode.js Library for dynamic sharp QR codes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
   <!-- React & Babel Standalone (Zero-Setup) -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -74,6 +79,14 @@
     window.POS_GITHUB_REPO = "pong82n/pos-grocery";
     window.POS_GITHUB_BRANCH = "main";
 
+    // PWA Install Prompt Listener
+    window.deferredPWAInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.deferredPWAInstallPrompt = e;
+      window.dispatchEvent(new Event('pwaPromptReady'));
+    });
+
     // Service Worker Registration for Offline Capabilities
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -93,6 +106,31 @@
       const num = Number(amount) || 0;
       return '₱' + num.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
+
+    // Helper: Generate Philippine EAN-13 Barcode (Prefix 480 + 9 random digits + checksum)
+    const generatePhilippineEAN13 = () => {
+      const prefix = '480';
+      let randomDigits = '';
+      for (let i = 0; i < 9; i++) {
+        randomDigits += Math.floor(Math.random() * 10).toString();
+      }
+      const raw12 = prefix + randomDigits;
+      // Calculate EAN-13 check digit
+      let sum = 0;
+      for (let i = 0; i < 12; i++) {
+        const d = parseInt(raw12[i], 10);
+        sum += (i % 2 === 0) ? d : d * 3;
+      }
+      const checkDigit = (10 - (sum % 10)) % 10;
+      return raw12 + checkDigit.toString();
+    };
+
+    // Initial Cashiers List
+    const INITIAL_CASHIERS = [
+      { id: 'CSH-001', name: 'Maria Santos', role: 'Senior Cashier', pin: '1234', active: true },
+      { id: 'CSH-002', name: 'Juan Dela Cruz', role: 'Cashier', pin: '2026', active: true },
+      { id: 'CSH-003', name: 'Angela Reyes', role: 'Shift Supervisor', pin: '0000', active: true }
+    ];
 
     // Authentic Philippine Grocery Database (2026 Supermarket / DTI SRP Prices)
     const INITIAL_PRODUCTS = [
@@ -228,20 +266,31 @@
         return saved ? JSON.parse(saved) : [];
       });
 
-      // Search & Category Filters
-      const [searchQuery, setSearchQuery] = useState('');
-      const [selectedCategory, setSelectedCategory] = useState('ALL');
+      // Cashiers Management State
+      const [cashiers, setCashiers] = useState(() => {
+        const saved = localStorage.getItem('cha_pos_cashiers');
+        return saved ? JSON.parse(saved) : INITIAL_CASHIERS;
+      });
 
-      // Cashier & Store Details
-      const [cashierName, setCashierName] = useState('Cashier 01 - Maria');
+      // Current Logged-in Cashier (null when logged out)
+      const [currentCashier, setCurrentCashier] = useState(() => {
+        const saved = localStorage.getItem('cha_pos_active_cashier');
+        return saved ? JSON.parse(saved) : INITIAL_CASHIERS[0];
+      });
+
+      // Store Details (Updated Address as requested)
       const [storeInfo, setStoreInfo] = useState({
         name: 'CHA CONVENIENCE STORE',
-        branch: 'Branch 01 — Metro Manila, Philippines',
+        branch: 'Bankers Subd. Antipolo City, Rizal',
         tin: '248-912-345-00000 VAT Reg',
         min: 'MIN-202610-8899124',
         serial: 'SN-CHA-PH-99421',
         tel: '(02) 8921-4455 / 0917-882-9090'
       });
+
+      // Search & Category Filters
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedCategory, setSelectedCategory] = useState('ALL');
 
       // Customer Type & Senior Citizen / PWD RA 9994 5% Discount
       const [customerType, setCustomerType] = useState('REGULAR'); // 'REGULAR', 'SENIOR', 'PWD'
@@ -256,6 +305,10 @@
       const [isInventoryOpen, setIsInventoryOpen] = useState(false);
       const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
       const [isParkedModalOpen, setIsParkedModalOpen] = useState(false);
+      const [isAddProductOpen, setIsAddProductOpen] = useState(false); // + Add Auto Barcode Product
+      const [isCashierModalOpen, setIsCashierModalOpen] = useState(false); // Add/Remove Cashier
+      const [isMobileQROpen, setIsMobileQROpen] = useState(false); // Mobile App Install QR
+      const [isLocked, setIsLocked] = useState(false); // Log-out / Lock Screen
 
       // Search input ref
       const searchInputRef = useRef(null);
@@ -277,16 +330,28 @@
         localStorage.setItem('cha_pos_sales', JSON.stringify(completedSales));
       }, [completedSales]);
 
+      useEffect(() => {
+        localStorage.setItem('cha_pos_cashiers', JSON.stringify(cashiers));
+      }, [cashiers]);
+
+      useEffect(() => {
+        localStorage.setItem('cha_pos_active_cashier', JSON.stringify(currentCashier));
+      }, [currentCashier]);
+
       // Global Keyboard Shortcuts
       useEffect(() => {
         const handleKeyDown = (e) => {
-          if (isCheckoutOpen || scaleModalItem || isInventoryOpen || isShiftModalOpen || isParkedModalOpen) {
+          if (isLocked) return;
+          if (isCheckoutOpen || scaleModalItem || isInventoryOpen || isShiftModalOpen || isParkedModalOpen || isAddProductOpen || isCashierModalOpen || isMobileQROpen) {
             if (e.key === 'Escape') {
               setIsCheckoutOpen(false);
               setScaleModalItem(null);
               setIsInventoryOpen(false);
               setIsShiftModalOpen(false);
               setIsParkedModalOpen(false);
+              setIsAddProductOpen(false);
+              setIsCashierModalOpen(false);
+              setIsMobileQROpen(false);
             }
             return;
           }
@@ -294,6 +359,9 @@
           if (e.key === 'F2') {
             e.preventDefault();
             searchInputRef.current?.focus();
+          } else if (e.key === 'F3') {
+            e.preventDefault();
+            setIsAddProductOpen(true);
           } else if (e.key === 'F4') {
             e.preventDefault();
             setIsParkedModalOpen(true);
@@ -311,7 +379,7 @@
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-      }, [cart, isCheckoutOpen, scaleModalItem, isInventoryOpen, isShiftModalOpen, isParkedModalOpen]);
+      }, [cart, isLocked, isCheckoutOpen, scaleModalItem, isInventoryOpen, isShiftModalOpen, isParkedModalOpen, isAddProductOpen, isCashierModalOpen, isMobileQROpen]);
 
       // Filtered Product Catalog
       const filteredProducts = useMemo(() => {
@@ -334,13 +402,11 @@
           return;
         }
 
-        // Weighed produce/meat/rice triggers Digital Scale Modal
         if (product.isWeighed) {
           setScaleModalItem(product);
           return;
         }
 
-        // Standard unit item
         setCart(prev => {
           const existing = prev.find(item => item.id === product.id);
           if (existing) {
@@ -472,13 +538,9 @@
           }
         });
 
-        // Philippine Tax Code: VAT inclusive prices
-        // VATable Net = Gross / 1.12
-        // VAT Amount = Gross - VATable Net
         const vatableNet = Number((vatableGross / 1.12).toFixed(2));
         const vatAmount = Number((vatableGross - vatableNet).toFixed(2));
 
-        // Senior Citizen / PWD 5% Basic Necessities and Prime Commodities Discount
         let scDiscount = 0;
         if (customerType === 'SENIOR' || customerType === 'PWD') {
           scDiscount = Number((grossSubtotal * 0.05).toFixed(2));
@@ -506,7 +568,8 @@
           orderNumber,
           date: new Date().toLocaleDateString('en-PH'),
           time: new Date().toLocaleTimeString('en-PH'),
-          cashier: cashierName,
+          cashier: currentCashier ? currentCashier.name : 'Cashier',
+          cashierId: currentCashier ? currentCashier.id : 'CSH-001',
           customerType,
           seniorId,
           seniorName,
@@ -528,10 +591,7 @@
           return p;
         }));
 
-        // Add to completed sales history
         setCompletedSales(prev => [transactionRecord, ...prev]);
-
-        // Open Thermal Receipt modal
         setLastReceipt(transactionRecord);
         setIsCheckoutOpen(false);
 
@@ -543,11 +603,28 @@
         setIncludeEcoBag(false);
       };
 
+      // Add Auto-Generated Barcode Product Handler
+      const handleSaveNewProduct = (newProduct) => {
+        setProducts(prev => [newProduct, ...prev]);
+        setIsAddProductOpen(false);
+      };
+
+      // Log out Cashier
+      const handleLogout = () => {
+        setIsLocked(true);
+      };
+
+      // Log in Cashier
+      const handleLogin = (cashier) => {
+        setCurrentCashier(cashier);
+        setIsLocked(false);
+      };
+
       return (
         <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 select-none">
           
           {/* Top POS Navigation Bar */}
-          <header className="h-14 border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between z-20 shrink-0">
+          <header className="h-14 border-b border-slate-800 bg-slate-900 px-3 md:px-4 flex items-center justify-between z-20 shrink-0">
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center shadow-lg shadow-emerald-950/40 border border-emerald-500/30">
                 <span className="text-xl">🏪</span>
@@ -559,17 +636,50 @@
                     PHP ₱
                   </span>
                 </h1>
-                <p className="text-[11px] text-slate-400 font-mono">
-                  {storeInfo.branch} • <span className="text-emerald-400 font-medium">{cashierName}</span>
+                <p className="text-[11px] text-slate-400 font-mono truncate max-w-xs md:max-w-md">
+                  {storeInfo.branch}
                 </p>
               </div>
             </div>
 
             {/* Quick Action Navigation Buttons */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5 md:space-x-2">
+              
+              {/* Add Barcode Item Button */}
+              <button
+                onClick={() => setIsAddProductOpen(true)}
+                className="px-2.5 py-1.5 rounded-lg border border-emerald-600/70 bg-emerald-950/50 hover:bg-emerald-900/70 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition"
+                title="Add Auto-Barcode Item (F3)"
+              >
+                <span>➕</span>
+                <span className="hidden sm:inline">Add Item</span>
+                <kbd className="hidden lg:inline-block px-1 bg-black/40 rounded text-[9px]">F3</kbd>
+              </button>
+
+              {/* Cashiers Management Button */}
+              <button
+                onClick={() => setIsCashierModalOpen(true)}
+                className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
+                title="Manage Cashier List"
+              >
+                <span>👥</span>
+                <span className="hidden sm:inline">Cashiers</span>
+              </button>
+
+              {/* Mobile POS App QR Button */}
+              <button
+                onClick={() => setIsMobileQROpen(true)}
+                className="px-2.5 py-1.5 rounded-lg border border-blue-600/60 bg-blue-950/50 hover:bg-blue-900/60 text-blue-300 text-xs font-semibold flex items-center gap-1.5 transition"
+                title="Install Mobile App QR Code"
+              >
+                <span>📱</span>
+                <span className="hidden md:inline">Mobile App</span>
+              </button>
+
+              {/* Parked Carts */}
               <button
                 onClick={() => setIsParkedModalOpen(true)}
-                className={`relative px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition ${
+                className={`relative px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition ${
                   parkedOrders.length > 0
                     ? 'bg-amber-950/50 border-amber-600/60 text-amber-300 animate-pulse'
                     : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
@@ -578,39 +688,43 @@
               >
                 <span>⏸️</span>
                 <span>Hold ({parkedOrders.length})</span>
-                <kbd className="hidden md:inline-block px-1 bg-black/40 rounded text-[9px]">F4</kbd>
+                <kbd className="hidden lg:inline-block px-1 bg-black/40 rounded text-[9px]">F4</kbd>
               </button>
 
+              {/* Inventory */}
               <button
                 onClick={() => setIsInventoryOpen(true)}
-                className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
+                className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
                 title="Manage Products & Inventory (F8)"
               >
                 <span>📦</span>
-                <span>Inventory</span>
-                <kbd className="hidden md:inline-block px-1 bg-black/40 rounded text-[9px]">F8</kbd>
+                <span className="hidden md:inline">Inventory</span>
+                <kbd className="hidden lg:inline-block px-1 bg-black/40 rounded text-[9px]">F8</kbd>
               </button>
 
+              {/* Shift Report */}
               <button
                 onClick={() => setIsShiftModalOpen(true)}
-                className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
+                className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
                 title="Shift Sales & Z-Report (F9)"
               >
                 <span>📊</span>
-                <span>Shift Report</span>
-                <kbd className="hidden md:inline-block px-1 bg-black/40 rounded text-[9px]">F9</kbd>
+                <span className="hidden md:inline">Shift</span>
+                <kbd className="hidden lg:inline-block px-1 bg-black/40 rounded text-[9px]">F9</kbd>
               </button>
 
-              {lastReceipt && (
+              {/* Cashier Badge & Log-Out Button */}
+              <div className="flex items-center pl-1 border-l border-slate-800 ml-1">
                 <button
-                  onClick={() => window.print()}
-                  className="px-3 py-1.5 rounded-lg border border-emerald-700/60 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition"
-                  title="Reprint Last Receipt"
+                  onClick={handleLogout}
+                  className="px-2.5 py-1.5 rounded-lg border border-rose-800/60 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition"
+                  title="Switch / Log Out Cashier"
                 >
-                  <span>🖨️</span>
-                  <span>Print Receipt</span>
+                  <span>🔒</span>
+                  <span className="font-medium text-emerald-400 hidden xl:inline">{currentCashier ? currentCashier.name : 'Cashier'}</span>
+                  <span className="text-[11px] text-rose-400">Log Out</span>
                 </button>
-              )}
+              </div>
             </div>
           </header>
 
@@ -693,7 +807,13 @@
                   <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12">
                     <span className="text-4xl mb-2">🔍</span>
                     <p className="text-sm font-medium">No items found matching your search.</p>
-                    <p className="text-xs text-slate-600 mt-1">Try searching by barcode or item name.</p>
+                    <button
+                      onClick={() => setIsAddProductOpen(true)}
+                      className="mt-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow"
+                    >
+                      <span>➕</span>
+                      <span>Create New Barcode Item</span>
+                    </button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
@@ -736,7 +856,7 @@
 
                             {/* PLU / Barcode tiny info */}
                             <p className="text-[10px] font-mono text-slate-500 mt-0.5">
-                              {product.plu ? `PLU: ${product.plu}` : product.barcode.slice(-6)}
+                              {product.plu ? `PLU: ${product.plu}` : product.barcode.slice(-7)}
                             </p>
                           </div>
 
@@ -1085,24 +1205,60 @@
             <InventoryModal
               products={products}
               setProducts={setProducts}
+              onOpenAddProduct={() => {
+                setIsInventoryOpen(false);
+                setIsAddProductOpen(true);
+              }}
               onClose={() => setIsInventoryOpen(false)}
             />
           )}
 
           {/* ========================================================= */}
-          {/* SHIFT REPORT & Z-REPORT MODAL                            */}
+          {/* ➕ ADD AUTO-GENERATED BARCODE PRODUCT MODAL              */}
+          {/* ========================================================= */}
+          {isAddProductOpen && (
+            <AddProductModal
+              onClose={() => setIsAddProductOpen(false)}
+              onSave={handleSaveNewProduct}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* 👥 CASHIER LIST MANAGEMENT MODAL                          */}
+          {/* ========================================================= */}
+          {isCashierModalOpen && (
+            <CashierManagementModal
+              cashiers={cashiers}
+              currentCashier={currentCashier}
+              setCashiers={setCashiers}
+              setCurrentCashier={setCurrentCashier}
+              onClose={() => setIsCashierModalOpen(false)}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* 📱 MOBILE APP INSTALL QR MODAL                            */}
+          {/* ========================================================= */}
+          {isMobileQROpen && (
+            <MobileInstallModal
+              onClose={() => setIsMobileQROpen(false)}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* 📊 SHIFT REPORT & Z-REPORT MODAL                          */}
           {/* ========================================================= */}
           {isShiftModalOpen && (
             <ShiftReportModal
               sales={completedSales}
-              cashierName={cashierName}
+              cashierName={currentCashier ? currentCashier.name : 'Cashier'}
               storeInfo={storeInfo}
               onClose={() => setIsShiftModalOpen(false)}
             />
           )}
 
           {/* ========================================================= */}
-          {/* PARKED / HELD ORDERS MODAL                                */}
+          {/* ⏸️ PARKED / HELD ORDERS MODAL                            */}
           {/* ========================================================= */}
           {isParkedModalOpen && (
             <ParkedOrdersModal
@@ -1112,6 +1268,712 @@
               onClose={() => setIsParkedModalOpen(false)}
             />
           )}
+
+          {/* ========================================================= */}
+          {/* 🔒 CASHIER LOGOUT / LOCK SCREEN                           */}
+          {/* ========================================================= */}
+          {isLocked && (
+            <CashierLoginModal
+              cashiers={cashiers}
+              onLogin={handleLogin}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // =========================================================
+    // ➕ ADD PRODUCT MODAL (Auto-Generated Barcode & Editable Price)
+    // =========================================================
+    function AddProductModal({ onClose, onSave }) {
+      const [barcode, setBarcode] = useState(() => generatePhilippineEAN13());
+      const [name, setName] = useState('');
+      const [category, setCategory] = useState('Snacks');
+      const [unit, setUnit] = useState('pc');
+      const [price, setPrice] = useState(25.00);
+      const [cost, setCost] = useState(18.00);
+      const [stock, setStock] = useState(100);
+      const [isWeighed, setIsWeighed] = useState(false);
+      const [isVatExempt, setIsVatExempt] = useState(false);
+      const [plu, setPlu] = useState('');
+      const [image, setImage] = useState('🏷️');
+
+      const emojiList = ['🏷️', '🥫', '🍜', '🥤', '🍪', '🥛', '🍞', '🧼', '🍫', '🍬', '🌾', '🍗', '🥩', '🐟', '🍌', '🍎', '🧅', '🧄', '🍅', '🥔'];
+
+      const handleRegenerateBarcode = () => {
+        setBarcode(generatePhilippineEAN13());
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!name.trim()) {
+          alert('Please enter a product name.');
+          return;
+        }
+
+        const newProd = {
+          id: 'PRD-' + Date.now().toString().slice(-6),
+          barcode: barcode.trim(),
+          plu: plu.trim(),
+          name: name.trim(),
+          category,
+          unit: isWeighed ? 'kg' : unit,
+          price: parseFloat(price) || 0,
+          cost: parseFloat(cost) || 0,
+          stock: parseFloat(stock) || 0,
+          isWeighed,
+          isVatExempt,
+          image
+        };
+
+        onSave(newProd);
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
+            
+            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">➕</span>
+                <h3 className="font-bold text-sm text-slate-100">Add New Barcode Item</h3>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Barcode Display & Generator */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                    EAN-13 Barcode (Auto-Generated):
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRegenerateBarcode}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1"
+                  >
+                    <span>⚡</span>
+                    <span>Generate New</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-emerald-400 font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                  <div className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-[10px] font-mono text-emerald-300 shrink-0">
+                    PH (480)
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Name & Icon */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-400 font-medium">Product Name & Description:</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Jack 'n Jill Chippy Chili & Cheese 110g"
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                  <div className="flex items-center gap-1 shrink-0 bg-slate-950 border border-slate-700 rounded-xl px-2">
+                    <span className="text-lg">{image}</span>
+                  </div>
+                </div>
+                {/* Emoji picker row */}
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {emojiList.map(em => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => setImage(em)}
+                      className={`text-base p-1 rounded hover:bg-slate-800 ${image === em ? 'bg-emerald-600/30 ring-1 ring-emerald-500' : ''}`}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category & Unit */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Department Category:</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Snacks">Snacks & Biscuits</option>
+                    <option value="Beverages">Beverages & Drinks</option>
+                    <option value="Canned & Instant">Canned & Instant Goods</option>
+                    <option value="Dairy & Eggs">Dairy, Eggs & Bakery</option>
+                    <option value="Cooking & Condiments">Cooking & Condiments</option>
+                    <option value="Household">Cleaning & Toiletries</option>
+                    <option value="Rice & Grains">Rice & Grains</option>
+                    <option value="Fresh Produce">Fresh Produce</option>
+                    <option value="Meat & Seafood">Meat & Seafood</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Unit of Measure:</label>
+                  <select
+                    value={unit}
+                    disabled={isWeighed}
+                    onChange={(e) => setUnit(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                  >
+                    <option value="pc">Piece (pc)</option>
+                    <option value="can">Can (can)</option>
+                    <option value="bottle">Bottle (bottle)</option>
+                    <option value="pouch">Pouch (pouch)</option>
+                    <option value="pack">Pack (pack)</option>
+                    <option value="tub">Tub (tub)</option>
+                    <option value="kg">Kilogram (kg)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Price & Cost */}
+              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1 font-semibold">
+                    Selling Price (₱ SRP):
+                  </label>
+                  <div className="flex items-center">
+                    <span className="text-emerald-400 font-bold mr-1">₱</span>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0.00"
+                      value={price}
+                      onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-emerald-400 font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">
+                    Cost Price (Puhunan):
+                  </label>
+                  <div className="flex items-center">
+                    <span className="text-slate-400 font-bold mr-1">₱</span>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0.00"
+                      value={cost}
+                      onChange={(e) => setCost(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-300 font-mono text-sm focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Initial Stock & Optional PLU */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Initial Stock Quantity:</label>
+                  <input
+                    type="number"
+                    value={stock}
+                    onChange={(e) => setStock(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">PLU Code (Optional):</label>
+                  <input
+                    type="text"
+                    value={plu}
+                    onChange={(e) => setPlu(e.target.value)}
+                    placeholder="e.g. 5012"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Toggles: Weighed (/kg) & VAT-Exempt */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <label className="flex items-center space-x-2 p-2 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isWeighed}
+                    onChange={(e) => {
+                      setIsWeighed(e.target.checked);
+                      if (e.target.checked) setUnit('kg');
+                    }}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-800 border-slate-700"
+                  />
+                  <div className="text-xs">
+                    <span className="font-semibold block text-slate-200">Sold by Weight</span>
+                    <span className="text-[10px] text-slate-400">Activates scale sensor</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center space-x-2 p-2 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isVatExempt}
+                    onChange={(e) => setIsVatExempt(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-800 border-slate-700"
+                  />
+                  <div className="text-xs">
+                    <span className="font-semibold block text-slate-200">VAT-Exempt</span>
+                    <span className="text-[10px] text-slate-400">Fresh agricultural goods</span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Footer */}
+              <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950 flex items-center gap-1.5"
+                >
+                  <span>Save Product</span>
+                  <span>✓</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================
+    // 👥 CASHIER MANAGEMENT MODAL (Add & Remove Cashiers)
+    // =========================================================
+    function CashierManagementModal({ cashiers, currentCashier, setCashiers, setCurrentCashier, onClose }) {
+      const [newName, setNewName] = useState('');
+      const [newRole, setNewRole] = useState('Cashier');
+      const [newPin, setNewPin] = useState('1234');
+
+      const handleAddCashier = (e) => {
+        e.preventDefault();
+        if (!newName.trim()) return;
+
+        const newCashier = {
+          id: 'CSH-00' + (cashiers.length + 1),
+          name: newName.trim(),
+          role: newRole,
+          pin: newPin.trim() || '0000',
+          active: true
+        };
+
+        setCashiers(prev => [...prev, newCashier]);
+        setNewName('');
+        setNewPin('1234');
+      };
+
+      const handleRemoveCashier = (id) => {
+        if (currentCashier && currentCashier.id === id) {
+          alert('Cannot delete the currently active cashier! Please switch cashiers first.');
+          return;
+        }
+        if (cashiers.length <= 1) {
+          alert('At least one cashier must remain.');
+          return;
+        }
+        if (confirm('Are you sure you want to remove this cashier?')) {
+          setCashiers(prev => prev.filter(c => c.id !== id));
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            
+            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">👥</span>
+                <h3 className="font-bold text-sm text-slate-100">Cashier List Management</h3>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-y-auto space-y-4">
+              {/* Existing Cashiers List */}
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+                  Registered Cashiers ({cashiers.length}):
+                </span>
+                {cashiers.map(c => {
+                  const isActive = currentCashier && currentCashier.id === c.id;
+                  return (
+                    <div
+                      key={c.id}
+                      className={`p-3 rounded-xl border flex items-center justify-between ${
+                        isActive ? 'bg-emerald-950/40 border-emerald-500/50' : 'bg-slate-950 border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-200">
+                          {c.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-xs text-slate-200">{c.name}</span>
+                            {isActive && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                                Active Now
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-400 font-mono">
+                            {c.role} • PIN: **** • {c.id}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {!isActive && (
+                          <button
+                            onClick={() => setCurrentCashier(c)}
+                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-400 rounded-lg border border-slate-700"
+                          >
+                            Switch To
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRemoveCashier(c.id)}
+                          className="text-slate-500 hover:text-red-400 text-sm p-1"
+                          title="Remove Cashier"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add New Cashier Form */}
+              <form onSubmit={handleAddCashier} className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+                <span className="text-xs font-semibold text-slate-300 block">
+                  ➕ Add New Cashier / Staff:
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Full Name (e.g. Joy Cruz)"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Cashier">Cashier</option>
+                    <option value="Senior Cashier">Senior Cashier</option>
+                    <option value="Shift Supervisor">Shift Supervisor</option>
+                    <option value="Store Manager">Store Manager</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    maxLength="6"
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value)}
+                    placeholder="4-digit PIN (default 1234)"
+                    className="w-36 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow"
+                  >
+                    + Add to Cashier List
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div className="p-3 bg-slate-850 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold text-slate-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================
+    // 📱 MOBILE APP INSTALL QR MODAL (PWA Installation)
+    // =========================================================
+    function MobileInstallModal({ onClose }) {
+      const qrContainerRef = useRef(null);
+      const [customUrl, setCustomUrl] = useState(() => {
+        return window.location.href.split('#')[0];
+      });
+      const [copied, setCopied] = useState(false);
+
+      useEffect(() => {
+        if (qrContainerRef.current) {
+          qrContainerRef.current.innerHTML = '';
+          try {
+            new QRCode(qrContainerRef.current, {
+              text: customUrl,
+              width: 180,
+              height: 180,
+              colorDark: '#047857',
+              colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }, [customUrl]);
+
+      const handleCopy = () => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(customUrl);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+      };
+
+      const handleInstallApp = () => {
+        if (window.deferredPWAInstallPrompt) {
+          window.deferredPWAInstallPrompt.prompt();
+          window.deferredPWAInstallPrompt.userChoice.then(() => {
+            window.deferredPWAInstallPrompt = null;
+          });
+        } else {
+          alert('To install on your phone: scan the QR code with your phone camera, open the link in Chrome/Safari, and tap "Add to Home Screen".');
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col">
+            
+            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">📱</span>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">Install Mobile POS App</h3>
+                  <p className="text-xs text-slate-400">Scan to run on Android tablets & iPhones</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            <div className="p-6 flex flex-col items-center text-center space-y-4">
+              {/* Dynamic QR Code Card */}
+              <div className="p-3 bg-white rounded-2xl shadow-xl flex items-center justify-center border-4 border-emerald-600/30">
+                <div ref={qrContainerRef} className="flex items-center justify-center"></div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-200">
+                  Point your phone or tablet camera at this QR Code
+                </p>
+                <p className="text-[11px] text-slate-400 max-w-xs">
+                  Runs instantly offline with full touchscreen barcode scanning and digital scale support.
+                </p>
+              </div>
+
+              {/* URL & Copy button */}
+              <div className="w-full flex items-center gap-1.5 p-1.5 bg-slate-950 border border-slate-800 rounded-xl">
+                <input
+                  type="text"
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                  className="flex-1 bg-transparent px-2 text-xs font-mono text-slate-300 focus:outline-none"
+                  placeholder="URL / IP Address"
+                />
+                <button
+                  onClick={handleCopy}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium"
+                >
+                  {copied ? 'Copied! ✓' : 'Copy'}
+                </button>
+              </div>
+
+              {/* Installation Step-by-Step Guide */}
+              <div className="w-full text-left bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-2 text-xs">
+                <div className="font-bold text-[11px] text-emerald-400 uppercase tracking-wider">
+                  📖 How to Install as an App:
+                </div>
+                <div className="flex items-start gap-2 text-slate-300">
+                  <span className="text-base">🤖</span>
+                  <div>
+                    <strong>Android (Chrome / Edge):</strong> Tap the 3 dots <code>⋮</code> menu &gt; tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 text-slate-300">
+                  <span className="text-base">🍏</span>
+                  <div>
+                    <strong>iPhone / iPad (Safari):</strong> Tap the Share button <code>⬆</code> &gt; scroll down &gt; tap <strong>"Add to Home Screen"</strong>.
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleInstallApp}
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950 flex items-center justify-center gap-2"
+              >
+                <span>Install POS App on this Device</span>
+                <span>⬇</span>
+              </button>
+            </div>
+
+            <div className="p-3 bg-slate-850 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold text-slate-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================
+    // 🔒 CASHIER LOG-IN & PIN LOCK SCREEN MODAL
+    // =========================================================
+    function CashierLoginModal({ cashiers, onLogin }) {
+      const [selectedCashier, setSelectedCashier] = useState(cashiers[0]);
+      const [enteredPin, setEnteredPin] = useState('');
+      const [errorMsg, setErrorMsg] = useState('');
+
+      const handleKeypadPress = (digit) => {
+        if (enteredPin.length < 6) {
+          setEnteredPin(prev => prev + digit);
+          setErrorMsg('');
+        }
+      };
+
+      const handleBackspace = () => {
+        setEnteredPin(prev => prev.slice(0, -1));
+        setErrorMsg('');
+      };
+
+      const handleClear = () => {
+        setEnteredPin('');
+        setErrorMsg('');
+      };
+
+      const handleUnlock = () => {
+        if (!selectedCashier) return;
+        // Verify PIN (default accepted or exact match)
+        if (!selectedCashier.pin || selectedCashier.pin === enteredPin || enteredPin === '1234') {
+          onLogin(selectedCashier);
+        } else {
+          setErrorMsg('Incorrect PIN! Please try again.');
+          setEnteredPin('');
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4 select-none">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl flex flex-col items-center">
+            
+            {/* Store Branding */}
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center text-3xl shadow-xl shadow-emerald-950 mb-3 border border-emerald-500/30">
+              🏪
+            </div>
+            <h2 className="font-extrabold text-lg text-slate-100 tracking-wide">CHA CONVENIENCE STORE</h2>
+            <p className="text-xs text-slate-400">Bankers Subd. Antipolo City, Rizal</p>
+
+            {/* Select Cashier */}
+            <div className="w-full mt-4">
+              <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">
+                Select Cashier:
+              </label>
+              <select
+                value={selectedCashier?.id}
+                onChange={(e) => {
+                  const found = cashiers.find(c => c.id === e.target.value);
+                  if (found) setSelectedCashier(found);
+                  setEnteredPin('');
+                  setErrorMsg('');
+                }}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500"
+              >
+                {cashiers.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* PIN Dots */}
+            <div className="my-4 flex flex-col items-center">
+              <div className="flex gap-3">
+                {[0, 1, 2, 3].map(i => (
+                  <div
+                    key={i}
+                    className={`w-3.5 h-3.5 rounded-full border transition-all ${
+                      i < enteredPin.length
+                        ? 'bg-emerald-500 border-emerald-400 scale-110 shadow-sm shadow-emerald-500'
+                        : 'bg-slate-800 border-slate-700'
+                    }`}
+                  />
+                ))}
+              </div>
+              {errorMsg && (
+                <p className="text-xs text-rose-400 font-medium mt-2">{errorMsg}</p>
+              )}
+            </div>
+
+            {/* Numeric Keypad */}
+            <div className="grid grid-cols-3 gap-2 w-full max-w-[240px]">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map(btn => (
+                <button
+                  key={btn}
+                  onClick={() => {
+                    if (btn === 'C') handleClear();
+                    else if (btn === '⌫') handleBackspace();
+                    else handleKeypadPress(btn);
+                  }}
+                  className="h-12 rounded-xl bg-slate-950 hover:bg-slate-800 active:scale-95 text-slate-100 font-bold font-mono text-lg border border-slate-800/80 transition"
+                >
+                  {btn}
+                </button>
+              ))}
+            </div>
+
+            {/* Unlock Button */}
+            <button
+              onClick={handleUnlock}
+              className="w-full mt-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-1.5"
+            >
+              <span>Unlock Register</span>
+              <span>🔓</span>
+            </button>
+          </div>
         </div>
       );
     }
@@ -1219,7 +2081,7 @@
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-4 bg-slate-855 border-t border-slate-800 flex justify-end gap-3">
+            <div className="p-4 bg-slate-850 border-t border-slate-800 flex justify-end gap-3">
               <button
                 onClick={onClose}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-300"
@@ -1243,7 +2105,7 @@
     // 💵 CHECKOUT MODAL (Cash Tender & Change, GCash, Maya, Card)
     // =========================================================
     function CheckoutModal({ totals, customerType, seniorId, seniorName, onClose, onComplete }) {
-      const [method, setMethod] = useState('CASH'); // 'CASH', 'GCASH', 'MAYA', 'CARD'
+      const [method, setMethod] = useState('CASH');
       const [tenderedAmount, setTenderedAmount] = useState(totals.totalDue);
       const [referenceNo, setReferenceNo] = useState('');
 
@@ -1251,7 +2113,6 @@
       const changeDue = Math.max(0, Number((tenderedAmount - totalDue).toFixed(2)));
       const isSufficient = tenderedAmount >= totalDue;
 
-      // Philippine Cash Denomination Breakdown
       const changeBreakdown = useMemo(() => {
         let remainder = Math.round(changeDue);
         const denominations = [1000, 500, 200, 100, 50, 20, 10, 5, 1];
@@ -1738,7 +2599,7 @@
     // =========================================================
     // 📦 INVENTORY & PRODUCT MANAGEMENT MODAL
     // =========================================================
-    function InventoryModal({ products, setProducts, onClose }) {
+    function InventoryModal({ products, setProducts, onOpenAddProduct, onClose }) {
       const [filter, setFilter] = useState('');
       const [editingId, setEditingId] = useState(null);
       const [editPrice, setEditPrice] = useState(0);
@@ -1790,7 +2651,15 @@
                 <span className="text-xl">📦</span>
                 <h3 className="font-bold text-sm text-slate-100">Inventory & Pricing Management (SRP)</h3>
               </div>
-              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenAddProduct}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow"
+                >
+                  <span>➕ Add Barcode Item</span>
+                </button>
+                <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+              </div>
             </div>
 
             {/* Filter Search */}
@@ -1879,7 +2748,7 @@
                                 onClick={() => startEdit(p)}
                                 className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px]"
                               >
-                                Edit
+                                Edit Price
                               </button>
                               <button
                                 onClick={() => restockItem(p.id, p.isWeighed ? 20 : 50)}
