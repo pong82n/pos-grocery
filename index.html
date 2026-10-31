@@ -1,0 +1,2136 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#064e3b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Maharlika POS" />
+  <title>Maharlika Grocery & Supermarket POS (PHP ₱)</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+  <link rel="manifest" href="manifest.json" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+              950: '#022c22',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- React & Babel Standalone (Zero-Setup) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    * { -webkit-tap-highlight-color: transparent; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #printable-receipt, #printable-receipt * { visibility: visible; }
+      #printable-receipt {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 78mm;
+        margin: 0;
+        padding: 4mm;
+        box-shadow: none !important;
+        border: none !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased font-sans select-none overflow-hidden">
+  <div id="root"></div>
+
+  <script>
+    window.POS_GITHUB_REPO = "pong82n/pos-grocery";
+    window.POS_GITHUB_BRANCH = "main";
+
+    // Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          window.swRegistration = reg;
+        }).catch((err) => console.log('SW registration skipped:', err));
+      });
+    }
+  </script>
+
+  <!-- React POS Application -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // Currency Formatter
+    const formatPHP = (amount) => {
+      const num = Number(amount) || 0;
+      return '₱' + num.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Authentic Philippine Grocery Database (2026 Supermarket / DTI SRP Prices)
+    const INITIAL_PRODUCTS = [
+      // 🌾 Bigas at Butil (Rice & Grains - Sold by kg, VAT-Exempt)
+      { id: 'RIC-001', barcode: '480001001001', plu: '1001', name: 'Sinandomeng Special Rice', category: 'Rice', unit: 'kg', price: 52.00, cost: 44.00, stock: 450, isWeighed: true, isVatExempt: true, image: '🌾' },
+      { id: 'RIC-002', barcode: '480001001002', plu: '1002', name: 'Dinorado Fragrant Rice', category: 'Rice', unit: 'kg', price: 62.00, cost: 52.00, stock: 320, isWeighed: true, isVatExempt: true, image: '🌾' },
+      { id: 'RIC-003', barcode: '480001001003', plu: '1003', name: 'Jasmine White Rice', category: 'Rice', unit: 'kg', price: 58.00, cost: 48.00, stock: 280, isWeighed: true, isVatExempt: true, image: '🌾' },
+      { id: 'RIC-004', barcode: '480001001004', plu: '1004', name: 'Organic Brown Rice', category: 'Rice', unit: 'kg', price: 68.00, cost: 56.00, stock: 150, isWeighed: true, isVatExempt: true, image: '🌾' },
+      { id: 'RIC-005', barcode: '480001001005', plu: '1005', name: 'Malagkit (Glutinous Rice)', category: 'Rice', unit: 'kg', price: 74.00, cost: 60.00, stock: 120, isWeighed: true, isVatExempt: true, image: '🌾' },
+
+      // 🥬 Gulay at Prutas (Fresh Produce - Sold by kg, VAT-Exempt)
+      { id: 'VEG-001', barcode: '480002002001', plu: '2001', name: 'Red Onion (Sibuyas Pula)', category: 'Produce', unit: 'kg', price: 140.00, cost: 110.00, stock: 85, isWeighed: true, isVatExempt: true, image: '🧅' },
+      { id: 'VEG-002', barcode: '480002002002', plu: '2002', name: 'White Garlic (Bawang)', category: 'Produce', unit: 'kg', price: 160.00, cost: 125.00, stock: 70, isWeighed: true, isVatExempt: true, image: '🧄' },
+      { id: 'VEG-003', barcode: '480002002003', plu: '2003', name: 'Native Tomatoes (Kamatis)', category: 'Produce', unit: 'kg', price: 85.00, cost: 60.00, stock: 95, isWeighed: true, isVatExempt: true, image: '🍅' },
+      { id: 'VEG-004', barcode: '480002002004', plu: '2004', name: 'Fresh Calamansi', category: 'Produce', unit: 'kg', price: 95.00, cost: 70.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🍋' },
+      { id: 'VEG-005', barcode: '480002002005', plu: '4011', name: 'Lakatan Banana', category: 'Produce', unit: 'kg', price: 90.00, cost: 65.00, stock: 110, isWeighed: true, isVatExempt: true, image: '🍌' },
+      { id: 'VEG-006', barcode: '480002002006', plu: '4012', name: 'Cavendish Banana', category: 'Produce', unit: 'kg', price: 80.00, cost: 58.00, stock: 90, isWeighed: true, isVatExempt: true, image: '🍌' },
+      { id: 'VEG-007', barcode: '480002002007', plu: '2007', name: 'Benguet Potato (Patatas)', category: 'Produce', unit: 'kg', price: 120.00, cost: 90.00, stock: 80, isWeighed: true, isVatExempt: true, image: '🥔' },
+      { id: 'VEG-008', barcode: '480002002008', plu: '2008', name: 'Carrots (Benguet)', category: 'Produce', unit: 'kg', price: 110.00, cost: 82.00, stock: 75, isWeighed: true, isVatExempt: true, image: '🥕' },
+      { id: 'VEG-009', barcode: '480002002009', plu: '2009', name: 'Ampalaya (Bitter Gourd)', category: 'Produce', unit: 'kg', price: 125.00, cost: 95.00, stock: 50, isWeighed: true, isVatExempt: true, image: '🥒' },
+      { id: 'VEG-010', barcode: '480002002010', plu: '2010', name: 'Eggplant (Talong)', category: 'Produce', unit: 'kg', price: 90.00, cost: 68.00, stock: 65, isWeighed: true, isVatExempt: true, image: '🍆' },
+      { id: 'VEG-011', barcode: '480002002011', plu: '2011', name: 'Green Cabbage (Repolyo)', category: 'Produce', unit: 'kg', price: 100.00, cost: 75.00, stock: 70, isWeighed: true, isVatExempt: true, image: '🥬' },
+      { id: 'VEG-012', barcode: '480002002012', plu: '2012', name: 'Ginger Root (Luya)', category: 'Produce', unit: 'kg', price: 170.00, cost: 130.00, stock: 45, isWeighed: true, isVatExempt: true, image: '🫚' },
+
+      // 🥩 Karne at Isda (Meat & Seafood - Sold by kg, VAT-Exempt)
+      { id: 'MEA-001', barcode: '480003003001', plu: '3001', name: 'Fresh Dressed Chicken (Whole)', category: 'Meat & Seafood', unit: 'kg', price: 195.00, cost: 160.00, stock: 85, isWeighed: true, isVatExempt: true, image: '🍗' },
+      { id: 'MEA-002', barcode: '480003003002', plu: '3002', name: 'Pork Liempo (Belly)', category: 'Meat & Seafood', unit: 'kg', price: 360.00, cost: 300.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🥓' },
+      { id: 'MEA-003', barcode: '480003003003', plu: '3003', name: 'Pork Kasim (Shoulder)', category: 'Meat & Seafood', unit: 'kg', price: 320.00, cost: 265.00, stock: 65, isWeighed: true, isVatExempt: true, image: '🥩' },
+      { id: 'MEA-004', barcode: '480003003004', plu: '3004', name: 'Beef Sirloin (Kenchi/Laman)', category: 'Meat & Seafood', unit: 'kg', price: 460.00, cost: 385.00, stock: 40, isWeighed: true, isVatExempt: true, image: '🥩' },
+      { id: 'MEA-005', barcode: '480003003005', plu: '3005', name: 'Fresh Bangus (Milkfish Dagupan)', category: 'Meat & Seafood', unit: 'kg', price: 240.00, cost: 195.00, stock: 50, isWeighed: true, isVatExempt: true, image: '🐟' },
+      { id: 'MEA-006', barcode: '480003003006', plu: '3006', name: 'Fresh Tilapia', category: 'Meat & Seafood', unit: 'kg', price: 160.00, cost: 125.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🐟' },
+
+      // 🥫 De Lata at Instant (Canned & Instant Goods - VATable)
+      { id: 'CAN-001', barcode: '480001664401', plu: '', name: 'Lucky Me! Pancit Canton Kalamansi 80g', category: 'Canned & Instant', unit: 'pc', price: 16.00, cost: 13.50, stock: 240, isWeighed: false, isVatExempt: false, image: '🍜' },
+      { id: 'CAN-002', barcode: '480001664402', plu: '', name: 'Lucky Me! Pancit Canton Chilimansi 80g', category: 'Canned & Instant', unit: 'pc', price: 16.00, cost: 13.50, stock: 240, isWeighed: false, isVatExempt: false, image: '🍜' },
+      { id: 'CAN-003', barcode: '480001664403', plu: '', name: 'Lucky Me! Instant Mami Chicken 55g', category: 'Canned & Instant', unit: 'pc', price: 15.00, cost: 12.50, stock: 180, isWeighed: false, isVatExempt: false, image: '🍜' },
+      { id: 'CAN-004', barcode: '480001665101', plu: '', name: 'Century Tuna Flakes in Oil 180g', category: 'Canned & Instant', unit: 'can', price: 44.00, cost: 37.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-005', barcode: '480001665102', plu: '', name: 'Century Tuna Flakes Hot & Spicy 180g', category: 'Canned & Instant', unit: 'can', price: 44.00, cost: 37.00, stock: 150, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-006', barcode: '480001665201', plu: '', name: 'San Marino Corned Tuna 180g', category: 'Canned & Instant', unit: 'can', price: 43.00, cost: 36.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-007', barcode: '480001665301', plu: '', name: 'Mega Sardines in Tomato Sauce 155g', category: 'Canned & Instant', unit: 'can', price: 24.50, cost: 20.00, stock: 220, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-008', barcode: '480001665302', plu: '', name: 'Ligo Sardines Red (Extra Hot) 155g', category: 'Canned & Instant', unit: 'can', price: 25.00, cost: 20.50, stock: 130, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-009', barcode: '480001665401', plu: '', name: 'Argentina Corned Beef 175g', category: 'Canned & Instant', unit: 'can', price: 43.00, cost: 35.50, stock: 140, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-010', barcode: '480001665501', plu: '', name: 'Purefoods Classic Corned Beef 210g', category: 'Canned & Instant', unit: 'can', price: 88.00, cost: 74.00, stock: 95, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-011', barcode: '480001665601', plu: '', name: 'Spam Luncheon Meat Classic 340g', category: 'Canned & Instant', unit: 'can', price: 198.00, cost: 168.00, stock: 65, isWeighed: false, isVatExempt: false, image: '🥫' },
+
+      // 🥛 Gatas, Itlog at Tinapay (Dairy, Eggs & Bakery)
+      { id: 'DAI-001', barcode: '480004004001', plu: '4001', name: 'Fresh Farm Egg Large (Piece)', category: 'Dairy & Eggs', unit: 'pc', price: 9.50, cost: 7.80, stock: 360, isWeighed: false, isVatExempt: true, image: '🥚' },
+      { id: 'DAI-002', barcode: '480004004002', plu: '4002', name: 'Tray of Fresh Eggs Large (30 pcs)', category: 'Dairy & Eggs', unit: 'tray', price: 275.00, cost: 235.00, stock: 45, isWeighed: false, isVatExempt: true, image: '🥚' },
+      { id: 'DAI-003', barcode: '480004004003', plu: '', name: 'Magnolia Fresh Milk 1L', category: 'Dairy & Eggs', unit: 'pc', price: 115.00, cost: 96.00, stock: 80, isWeighed: false, isVatExempt: false, image: '🥛' },
+      { id: 'DAI-004', barcode: '480004004004', plu: '', name: 'Bear Brand Fortified Milk Powder 300g', category: 'Dairy & Eggs', unit: 'pc', price: 125.00, cost: 104.00, stock: 95, isWeighed: false, isVatExempt: false, image: '🥛' },
+      { id: 'DAI-005', barcode: '480004004005', plu: '', name: 'Eden Cheese Original 165g', category: 'Dairy & Eggs', unit: 'pc', price: 68.00, cost: 56.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🧀' },
+      { id: 'DAI-006', barcode: '480004004006', plu: '', name: 'Gardenia Classic White Bread 600g', category: 'Dairy & Eggs', unit: 'pc', price: 85.00, cost: 72.00, stock: 50, isWeighed: false, isVatExempt: false, image: '🍞' },
+      { id: 'DAI-007', barcode: '480004004007', plu: '', name: 'Fresh Bakery Pan De Sal (Pack of 10)', category: 'Dairy & Eggs', unit: 'pack', price: 45.00, cost: 30.00, stock: 60, isWeighed: false, isVatExempt: false, image: '🥖' },
+
+      // 🧂 Mantika, Asukal at Rekado (Cooking Essentials)
+      { id: 'COO-001', barcode: '480005005001', plu: '', name: 'Golden Fiesta Cooking Oil 1L Pouch', category: 'Condiments & Cooking', unit: 'pouch', price: 88.00, cost: 72.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🫗' },
+      { id: 'COO-002', barcode: '480005005002', plu: '', name: 'Datu Puti Soy Sauce 1L Bottle', category: 'Condiments & Cooking', unit: 'bottle', price: 48.00, cost: 39.00, stock: 130, isWeighed: false, isVatExempt: false, image: '🍾' },
+      { id: 'COO-003', barcode: '480005005003', plu: '', name: 'Datu Puti White Vinegar 1L Bottle', category: 'Condiments & Cooking', unit: 'bottle', price: 42.00, cost: 34.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🍾' },
+      { id: 'COO-004', barcode: '480005005004', plu: '', name: 'Silver Swan Soy Sauce 1L Pouch', category: 'Condiments & Cooking', unit: 'pouch', price: 46.00, cost: 37.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🫗' },
+      { id: 'COO-005', barcode: '480005005005', plu: '', name: 'UFC Tamis Anghang Banana Ketchup 550g', category: 'Condiments & Cooking', unit: 'bottle', price: 45.00, cost: 36.50, stock: 90, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'COO-006', barcode: '480005005006', plu: '', name: 'Maggi Magic Sarap 8g (Pack of 12)', category: 'Condiments & Cooking', unit: 'pack', price: 65.00, cost: 52.00, stock: 180, isWeighed: false, isVatExempt: false, image: '✨' },
+      { id: 'COO-007', barcode: '480005005007', plu: '', name: 'Ajinomoto Umami Seasoning 100g', category: 'Condiments & Cooking', unit: 'pc', price: 28.00, cost: 22.50, stock: 160, isWeighed: false, isVatExempt: false, image: '🧂' },
+      { id: 'COO-008', barcode: '480005005008', plu: '5008', name: 'Refined White Sugar 1kg', category: 'Condiments & Cooking', unit: 'kg', price: 84.00, cost: 70.00, stock: 150, isWeighed: true, isVatExempt: false, image: '🍬' },
+      { id: 'COO-009', barcode: '480005005009', plu: '5009', name: 'Washed Brown Sugar 1kg', category: 'Condiments & Cooking', unit: 'kg', price: 76.00, cost: 62.00, stock: 140, isWeighed: true, isVatExempt: false, image: '🍬' },
+      { id: 'COO-010', barcode: '480005005010', plu: '', name: 'Fidel Iodized Table Salt 500g', category: 'Condiments & Cooking', unit: 'pc', price: 20.00, cost: 15.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🧂' },
+
+      // 🥤 Inumin (Beverages)
+      { id: 'BEV-001', barcode: '480006006001', plu: '', name: 'Coca-Cola 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🥤' },
+      { id: 'BEV-002', barcode: '480006006002', plu: '', name: 'Royal Tru-Orange 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍊' },
+      { id: 'BEV-003', barcode: '480006006003', plu: '', name: 'Sprite 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 85, isWeighed: false, isVatExempt: false, image: '🍋' },
+      { id: 'BEV-004', barcode: '480006006004', plu: '', name: 'Kopiko Blanca 3-in-1 Coffee 10s Pack', category: 'Beverages', unit: 'pack', price: 125.00, cost: 102.00, stock: 110, isWeighed: false, isVatExempt: false, image: '☕' },
+      { id: 'BEV-005', barcode: '480006006005', plu: '', name: 'Nescafé Classic Pure Coffee 100g Jar', category: 'Beverages', unit: 'jar', price: 110.00, cost: 90.00, stock: 80, isWeighed: false, isVatExempt: false, image: '☕' },
+      { id: 'BEV-006', barcode: '480006006006', plu: '', name: "Nature's Spring Mineral Water 500ml", category: 'Beverages', unit: 'bottle', price: 15.00, cost: 9.50, stock: 240, isWeighed: false, isVatExempt: false, image: '💧' },
+      { id: 'BEV-007', barcode: '480006006007', plu: '', name: "Nature's Spring Purified Water 6L", category: 'Beverages', unit: 'bottle', price: 85.00, cost: 65.00, stock: 70, isWeighed: false, isVatExempt: false, image: '💧' },
+      { id: 'BEV-008', barcode: '480006006008', plu: '', name: 'San Miguel Pale Pilsen 330ml Can', category: 'Beverages', unit: 'can', price: 62.00, cost: 48.00, stock: 96, isWeighed: false, isVatExempt: false, image: '🍺' },
+      { id: 'BEV-009', barcode: '480006006009', plu: '', name: 'Red Horse Beer 500ml Can', category: 'Beverages', unit: 'can', price: 68.00, cost: 53.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🐎' },
+
+      // 🍪 Chichirya at Biscuits (Snacks & Merienda)
+      { id: 'SNA-001', barcode: '480007007001', plu: '', name: 'SkyFlakes Crackers Big Tub 800g', category: 'Snacks', unit: 'tub', price: 145.00, cost: 118.00, stock: 50, isWeighed: false, isVatExempt: false, image: '🍘' },
+      { id: 'SNA-002', barcode: '480007007002', plu: '', name: 'SkyFlakes Crackers Single 25g (Pack of 10)', category: 'Snacks', unit: 'pack', price: 85.00, cost: 68.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍘' },
+      { id: 'SNA-003', barcode: '480007007003', plu: '', name: 'Piattos Cheese Flavored Potato Crisps 85g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 130, isWeighed: false, isVatExempt: false, image: '🥔' },
+      { id: 'SNA-004', barcode: '480007007004', plu: '', name: 'Nova Country Cheddar Multigrain Snacks 78g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 115, isWeighed: false, isVatExempt: false, image: '🌽' },
+      { id: 'SNA-005', barcode: '480007007005', plu: '', name: 'Chippy Barbecue Flavor 110g', category: 'Snacks', unit: 'pc', price: 38.00, cost: 30.00, stock: 125, isWeighed: false, isVatExempt: false, image: '🌽' },
+      { id: 'SNA-006', barcode: '480007007006', plu: '', name: 'Oishi Prawn Crackers Spicy 60g', category: 'Snacks', unit: 'pc', price: 28.00, cost: 22.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🦐' },
+      { id: 'SNA-007', barcode: '480007007007', plu: '', name: 'Nagaraya Garlic Cracker Nuts 160g', category: 'Snacks', unit: 'pack', price: 48.00, cost: 38.00, stock: 85, isWeighed: false, isVatExempt: false, image: '🥜' },
+
+      // 🧼 Panglinis at Sabon (Household & Personal Care)
+      { id: 'HOU-001', barcode: '480008008001', plu: '', name: 'Surf Powder Detergent Blossom Fresh 2kg', category: 'Household', unit: 'bag', price: 235.00, cost: 195.00, stock: 75, isWeighed: false, isVatExempt: false, image: '🧺' },
+      { id: 'HOU-002', barcode: '480008008002', plu: '', name: 'Ariel Sunrise Fresh Detergent Powder 1.9kg', category: 'Household', unit: 'bag', price: 320.00, cost: 265.00, stock: 60, isWeighed: false, isVatExempt: false, image: '🧺' },
+      { id: 'HOU-003', barcode: '480008008003', plu: '', name: 'Downy Sunrise Fresh Fabric Conditioner 800ml', category: 'Household', unit: 'pouch', price: 175.00, cost: 142.00, stock: 85, isWeighed: false, isVatExempt: false, image: '🌸' },
+      { id: 'HOU-004', barcode: '480008008004', plu: '', name: 'Joy Dishwashing Liquid Lemon 790ml Refill', category: 'Household', unit: 'pouch', price: 145.00, cost: 118.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍋' },
+      { id: 'HOU-005', barcode: '480008008005', plu: '', name: 'Safeguard Pure White Bar Soap 130g', category: 'Household', unit: 'pc', price: 52.00, cost: 41.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🧼' },
+      { id: 'HOU-006', barcode: '480008008006', plu: '', name: 'Palmolive Naturals Shampoo 180ml Bottle', category: 'Household', unit: 'bottle', price: 125.00, cost: 98.00, stock: 80, isWeighed: false, isVatExempt: false, image: '🧴' },
+      { id: 'HOU-007', barcode: '480008008007', plu: '', name: 'Colgate Triple Action Toothpaste 145g', category: 'Household', unit: 'pc', price: 95.00, cost: 76.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🪥' }
+    ];
+
+    const CATEGORIES = [
+      { id: 'ALL', label: 'All Items', icon: '🛒' },
+      { id: 'Rice', label: '🌾 Bigas (Rice)', icon: '🌾' },
+      { id: 'Produce', label: '🥬 Gulay & Prutas', icon: '🥬' },
+      { id: 'Meat & Seafood', label: '🥩 Karne & Isda', icon: '🥩' },
+      { id: 'Canned & Instant', label: '🥫 De Lata & Noodles', icon: '🥫' },
+      { id: 'Dairy & Eggs', label: '🥛 Gatas, Itlog & Tinapay', icon: '🥛' },
+      { id: 'Condiments & Cooking', label: '🧂 Mantika & Rekado', icon: '🧂' },
+      { id: 'Beverages', label: '🥤 Inumin', icon: '🥤' },
+      { id: 'Snacks', label: '🍪 Chichirya & Biscuits', icon: '🍪' },
+      { id: 'Household', label: '🧼 Sabon & Panglinis', icon: '🧼' }
+    ];
+
+    // Main App Component
+    function App() {
+      // Products & Inventory State
+      const [products, setProducts] = useState(() => {
+        const saved = localStorage.getItem('maharlika_pos_products');
+        return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+      });
+
+      // Active Cart State
+      const [cart, setCart] = useState(() => {
+        const saved = localStorage.getItem('maharlika_pos_cart');
+        return saved ? JSON.parse(saved) : [];
+      });
+
+      // Parked (Held) Carts
+      const [parkedOrders, setParkedOrders] = useState(() => {
+        const saved = localStorage.getItem('maharlika_pos_parked');
+        return saved ? JSON.parse(saved) : [];
+      });
+
+      // Completed Sales Orders History
+      const [completedSales, setCompletedSales] = useState(() => {
+        const saved = localStorage.getItem('maharlika_pos_sales');
+        return saved ? JSON.parse(saved) : [];
+      });
+
+      // Search & Category Filters
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedCategory, setSelectedCategory] = useState('ALL');
+
+      // Cashier & Store Details
+      const [cashierName, setCashierName] = useState('Cashier 01 - Maria');
+      const [storeInfo, setStoreInfo] = useState({
+        name: 'MAHARLIKA SUPERMARKET & GROCERY',
+        branch: 'Branch 04 - Quezon City Metro Manila',
+        tin: '248-912-345-00000 VAT Reg',
+        min: 'MIN-202610-8899124',
+        serial: 'SN-POS-PH-99421',
+        tel: '(02) 8921-4455 / 0917-882-9090'
+      });
+
+      // Customer Type & RA 9994 / RA 10754 Senior Citizen & PWD Discount
+      const [customerType, setCustomerType] = useState('REGULAR'); // 'REGULAR', 'SENIOR', 'PWD'
+      const [seniorId, setSeniorId] = useState('');
+      const [seniorName, setSeniorName] = useState('');
+      const [includeEcoBag, setIncludeEcoBag] = useState(false); // ₱2.00 bag fee
+
+      // Modals
+      const [scaleModalItem, setScaleModalItem] = useState(null); // When weighing an item
+      const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+      const [lastReceipt, setLastReceipt] = useState(null);
+      const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+      const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+      const [isParkedModalOpen, setIsParkedModalOpen] = useState(false);
+
+      // Barcode auto-focus ref
+      const searchInputRef = useRef(null);
+
+      // Save to LocalStorage
+      useEffect(() => {
+        localStorage.setItem('maharlika_pos_products', JSON.stringify(products));
+      }, [products]);
+
+      useEffect(() => {
+        localStorage.setItem('maharlika_pos_cart', JSON.stringify(cart));
+      }, [cart]);
+
+      useEffect(() => {
+        localStorage.setItem('maharlika_pos_parked', JSON.stringify(parkedOrders));
+      }, [parkedOrders]);
+
+      useEffect(() => {
+        localStorage.setItem('maharlika_pos_sales', JSON.stringify(completedSales));
+      }, [completedSales]);
+
+      // Global Keyboard Shortcuts
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          // If in modal, don't trigger hotkeys
+          if (isCheckoutOpen || scaleModalItem || isInventoryOpen || isShiftModalOpen || isParkedModalOpen) {
+            if (e.key === 'Escape') {
+              setIsCheckoutOpen(false);
+              setScaleModalItem(null);
+              setIsInventoryOpen(false);
+              setIsShiftModalOpen(false);
+              setIsParkedModalOpen(false);
+            }
+            return;
+          }
+
+          if (e.key === 'F2') {
+            e.preventDefault();
+            searchInputRef.current?.focus();
+          } else if (e.key === 'F4') {
+            e.preventDefault();
+            setIsParkedModalOpen(true);
+          } else if (e.key === 'F8') {
+            e.preventDefault();
+            setIsInventoryOpen(true);
+          } else if (e.key === 'F9') {
+            e.preventDefault();
+            setIsShiftModalOpen(true);
+          } else if (e.key === 'F12' && cart.length > 0) {
+            e.preventDefault();
+            setIsCheckoutOpen(true);
+          }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [cart, isCheckoutOpen, scaleModalItem, isInventoryOpen, isShiftModalOpen, isParkedModalOpen]);
+
+      // Filtered Catalog
+      const filteredProducts = useMemo(() => {
+        return products.filter(p => {
+          const matchCat = selectedCategory === 'ALL' || p.category === selectedCategory;
+          const query = searchQuery.trim().toLowerCase();
+          const matchSearch = !query ||
+            p.name.toLowerCase().includes(query) ||
+            p.barcode.includes(query) ||
+            (p.plu && p.plu.includes(query)) ||
+            p.category.toLowerCase().includes(query);
+          return matchCat && matchSearch;
+        });
+      }, [products, selectedCategory, searchQuery]);
+
+      // Add to Cart
+      const handleProductClick = (product) => {
+        if (product.stock <= 0) {
+          alert(`Ma'am/Sir, out of stock na po ang "${product.name}".`);
+          return;
+        }
+
+        // If product is weighed (sold per kg), open the Weighing Scale Simulator
+        if (product.isWeighed) {
+          setScaleModalItem(product);
+          return;
+        }
+
+        // Otherwise add 1 unit or increment existing
+        setCart(prev => {
+          const existing = prev.find(item => item.id === product.id);
+          if (existing) {
+            return prev.map(item =>
+              item.id === product.id
+                ? { ...item, qty: item.qty + 1, total: (item.qty + 1) * item.price }
+                : item
+            );
+          }
+          return [...prev, {
+            ...product,
+            qty: 1,
+            total: product.price
+          }];
+        });
+      };
+
+      // Confirm Weighed item from Scale Modal
+      const handleAddWeighedItem = (product, weightInKg) => {
+        if (weightInKg <= 0) return;
+        setCart(prev => {
+          const existingIndex = prev.findIndex(item => item.id === product.id && item.unit === 'kg');
+          if (existingIndex >= 0) {
+            const updated = [...prev];
+            const newQty = Number((updated[existingIndex].qty + weightInKg).toFixed(3));
+            updated[existingIndex] = {
+              ...updated[existingIndex],
+              qty: newQty,
+              total: Number((newQty * product.price).toFixed(2))
+            };
+            return updated;
+          }
+          return [...prev, {
+            ...product,
+            qty: Number(weightInKg.toFixed(3)),
+            total: Number((weightInKg * product.price).toFixed(2))
+          }];
+        });
+        setScaleModalItem(null);
+      };
+
+      // Modify Cart Quantity
+      const updateCartQty = (id, newQty) => {
+        if (newQty <= 0) {
+          removeFromCart(id);
+          return;
+        }
+        setCart(prev => prev.map(item => {
+          if (item.id === id) {
+            const roundedQty = item.isWeighed ? Number(newQty.toFixed(3)) : Math.round(newQty);
+            return {
+              ...item,
+              qty: roundedQty,
+              total: Number((roundedQty * item.price).toFixed(2))
+            };
+          }
+          return item;
+        }));
+      };
+
+      const removeFromCart = (id) => {
+        setCart(prev => prev.filter(item => item.id !== id));
+      };
+
+      const clearCart = () => {
+        if (cart.length === 0) return;
+        if (confirm('Sigurado po ba kayong i-clear ang kasalukuyang cart?')) {
+          setCart([]);
+          setCustomerType('REGULAR');
+          setSeniorId('');
+          setSeniorName('');
+          setIncludeEcoBag(false);
+        }
+      };
+
+      // Park Cart (Hold Order)
+      const parkCurrentCart = () => {
+        if (cart.length === 0) return;
+        const customerNote = prompt('Ilagay ang Pangalan o Deskripsyon ng Mamimili (e.g. Cart #3, Mama na naka-blue):', `Customer #${parkedOrders.length + 1}`);
+        if (!customerNote) return;
+
+        const newParked = {
+          id: 'PARK-' + Date.now(),
+          timestamp: new Date().toLocaleTimeString('en-PH'),
+          note: customerNote,
+          cart: [...cart],
+          customerType,
+          seniorId,
+          seniorName,
+          includeEcoBag
+        };
+
+        setParkedOrders(prev => [newParked, ...prev]);
+        setCart([]);
+        setCustomerType('REGULAR');
+        setSeniorId('');
+        setSeniorName('');
+        setIncludeEcoBag(false);
+      };
+
+      // Recall Parked Cart
+      const recallParkedOrder = (parked) => {
+        if (cart.length > 0) {
+          if (!confirm('May laman ang kasalukuyang cart. Nais mo bang i-park muna ito o palitan? Pindutin ang OK upang ipalit.')) {
+            return;
+          }
+        }
+        setCart(parked.cart);
+        setCustomerType(parked.customerType);
+        setSeniorId(parked.seniorId || '');
+        setSeniorName(parked.seniorName || '');
+        setIncludeEcoBag(parked.includeEcoBag || false);
+        setParkedOrders(prev => prev.filter(p => p.id !== parked.id));
+        setIsParkedModalOpen(false);
+      };
+
+      // Philippine BIR VAT & Totals Calculation
+      const totals = useMemo(() => {
+        let grossSubtotal = 0;
+        let vatExemptGross = 0;
+        let vatableGross = 0;
+
+        cart.forEach(item => {
+          grossSubtotal += item.total;
+          if (item.isVatExempt) {
+            vatExemptGross += item.total;
+          } else {
+            vatableGross += item.total;
+          }
+        });
+
+        // Philippine Tax Code: VAT inclusive prices
+        // VATable Net = Gross / 1.12
+        // VAT Amount = Gross - VATable Net
+        const vatableNet = Number((vatableGross / 1.12).toFixed(2));
+        const vatAmount = Number((vatableGross - vatableNet).toFixed(2));
+
+        // Senior Citizen / PWD 5% Basic Necessities and Prime Commodities Discount
+        let scDiscount = 0;
+        if (customerType === 'SENIOR' || customerType === 'PWD') {
+          // RA 9994 / RA 10754 gives 5% discount on grocery basic necessities
+          scDiscount = Number((grossSubtotal * 0.05).toFixed(2));
+        }
+
+        const bagFee = includeEcoBag ? 2.00 : 0.00;
+        const totalDue = Number((grossSubtotal - scDiscount + bagFee).toFixed(2));
+
+        return {
+          grossSubtotal,
+          vatExemptGross,
+          vatableGross,
+          vatableNet,
+          vatAmount,
+          scDiscount,
+          bagFee,
+          totalDue
+        };
+      }, [cart, customerType, includeEcoBag]);
+
+      // Complete Checkout & Update Inventory
+      const handleCompleteTransaction = (paymentData) => {
+        const orderNumber = 'OR-' + Math.floor(100000 + Math.random() * 900000);
+        const transactionRecord = {
+          orderNumber,
+          date: new Date().toLocaleDateString('en-PH'),
+          time: new Date().toLocaleTimeString('en-PH'),
+          cashier: cashierName,
+          customerType,
+          seniorId,
+          seniorName,
+          items: [...cart],
+          totals: { ...totals },
+          payment: paymentData,
+          storeInfo: { ...storeInfo }
+        };
+
+        // Deduct inventory
+        setProducts(prev => prev.map(p => {
+          const bought = cart.find(c => c.id === p.id);
+          if (bought) {
+            return {
+              ...p,
+              stock: Number(Math.max(0, p.stock - bought.qty).toFixed(3))
+            };
+          }
+          return p;
+        }));
+
+        // Add to completed sales
+        setCompletedSales(prev => [transactionRecord, ...prev]);
+
+        // Open Thermal Receipt modal
+        setLastReceipt(transactionRecord);
+        setIsCheckoutOpen(false);
+
+        // Reset Cart
+        setCart([]);
+        setCustomerType('REGULAR');
+        setSeniorId('');
+        setSeniorName('');
+        setIncludeEcoBag(false);
+      };
+
+      return (
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 select-none">
+          {/* Top POS Navigation Bar */}
+          <header className="h-14 border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between z-20 shrink-0">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center shadow-lg shadow-emerald-950/40 border border-emerald-500/30">
+                <span className="text-xl">🛒</span>
+              </div>
+              <div>
+                <h1 className="font-bold text-sm tracking-wide text-emerald-400 flex items-center gap-2">
+                  {storeInfo.name}
+                  <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    PHP ₱
+                  </span>
+                </h1>
+                <p className="text-[11px] text-slate-400 font-mono">
+                  {storeInfo.branch} • <span className="text-emerald-400 font-medium">{cashierName}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Navigation Buttons */}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsParkedModalOpen(true)}
+                className={`relative px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition ${
+                  parkedOrders.length > 0
+                    ? 'bg-amber-950/50 border-amber-600/60 text-amber-300 animate-pulse'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                }`}
+                title="Parked / Held Carts (F4)"
+              >
+                <span>⏸️</span>
+                <span>Hold ({parkedOrders.length})</span>
+                <kbd className="hidden md:inline-block px-1 bg-black/40 rounded text-[9px]">F4</kbd>
+              </button>
+
+              <button
+                onClick={() => setIsInventoryOpen(true)}
+                className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
+                title="Manage Products & Inventory (F8)"
+              >
+                <span>📦</span>
+                <span>Inventory</span>
+                <kbd className="hidden md:inline-block px-1 bg-black/40 rounded text-[9px]">F8</kbd>
+              </button>
+
+              <button
+                onClick={() => setIsShiftModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition"
+                title="Daily Shift Sales & Z-Report (F9)"
+              >
+                <span>📊</span>
+                <span>Shift Report</span>
+                <kbd className="hidden md:inline-block px-1 bg-black/40 rounded text-[9px]">F9</kbd>
+              </button>
+
+              {lastReceipt && (
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 rounded-lg border border-emerald-700/60 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition"
+                  title="Reprint Last Receipt"
+                >
+                  <span>🖨️</span>
+                  <span>Print Receipt</span>
+                </button>
+              )}
+            </div>
+          </header>
+
+          {/* Main 2-Column POS Layout */}
+          <div className="flex-1 flex overflow-hidden">
+            
+            {/* LEFT COLUMN: Product Catalog & Fast Lookup */}
+            <div className="flex-1 flex flex-col border-r border-slate-800/80 bg-slate-950/90 overflow-hidden">
+              
+              {/* Search & Barcode Wedge Bar */}
+              <div className="p-3 bg-slate-900/60 border-b border-slate-800/80 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-2.5 text-slate-400 text-sm">🔍</span>
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        // If exact barcode matched or single product found, add immediately!
+                        if (filteredProducts.length === 1) {
+                          handleProductClick(filteredProducts[0]);
+                          setSearchQuery('');
+                        }
+                      }
+                    }}
+                    placeholder="Scan Barcode (EAN-13) or type item name / PLU code (Press F2)..."
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-16 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-2 text-xs text-slate-400 hover:text-slate-200 px-1.5 py-0.5 rounded bg-slate-800"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => {
+                    const pluInput = prompt('Ilagay ang Produce PLU Code (Halimbawa: 4011 para sa Saging, 2001 Sibuyas):');
+                    if (pluInput) {
+                      const found = products.find(p => p.plu === pluInput.trim());
+                      if (found) {
+                        handleProductClick(found);
+                      } else {
+                        alert(`Walang natagpuang produkto para sa PLU Code: ${pluInput}`);
+                      }
+                    }
+                  }}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-emerald-400 flex items-center gap-1.5 shrink-0"
+                >
+                  <span>🔢</span>
+                  <span>PLU Entry</span>
+                </button>
+              </div>
+
+              {/* Department / Category Tabs */}
+              <div className="flex overflow-x-auto gap-1.5 p-2 bg-slate-900/30 border-b border-slate-800/80 scrollbar-none shrink-0">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition flex items-center gap-1.5 ${
+                      selectedCategory === cat.id
+                        ? 'bg-emerald-600 text-white font-semibold shadow-md shadow-emerald-950'
+                        : 'bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Products Grid */}
+              <div className="flex-1 overflow-y-auto p-3">
+                {filteredProducts.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12">
+                    <span className="text-4xl mb-2">🔍</span>
+                    <p className="text-sm font-medium">Walang natagpuang produkto sa paghahanap.</p>
+                    <p className="text-xs text-slate-600 mt-1">Subukan i-type ang barcode o pangalan.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+                    {filteredProducts.map(product => {
+                      const isLowStock = product.stock <= 10;
+                      const isOutOfStock = product.stock <= 0;
+
+                      return (
+                        <div
+                          key={product.id}
+                          onClick={() => handleProductClick(product)}
+                          className={`relative group flex flex-col justify-between p-3 rounded-xl border text-left cursor-pointer transition-all duration-150 select-none ${
+                            isOutOfStock
+                              ? 'bg-slate-900/40 border-slate-800/50 opacity-50 cursor-not-allowed'
+                              : 'bg-slate-900/90 border-slate-800 hover:border-emerald-500/70 hover:bg-slate-850 hover:shadow-lg hover:shadow-emerald-950/30 active:scale-[0.98]'
+                          }`}
+                        >
+                          <div>
+                            {/* Product Header / Badges */}
+                            <div className="flex items-start justify-between gap-1 mb-2">
+                              <span className="text-2xl filter drop-shadow">{product.image}</span>
+                              <div className="flex flex-col items-end gap-1">
+                                {product.isWeighed && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-0.5">
+                                    ⚖️ /kg
+                                  </span>
+                                )}
+                                {product.isVatExempt && (
+                                  <span className="text-[9px] font-bold px-1 rounded bg-teal-500/20 text-teal-300" title="VAT-Exempt Fresh Agricultural Produce">
+                                    EXEMPT
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Product Name */}
+                            <h3 className="font-semibold text-xs leading-snug line-clamp-2 text-slate-200 group-hover:text-emerald-300 transition">
+                              {product.name}
+                            </h3>
+
+                            {/* PLU / Barcode tiny info */}
+                            <p className="text-[10px] font-mono text-slate-500 mt-0.5">
+                              {product.plu ? `PLU: ${product.plu}` : product.barcode.slice(-6)}
+                            </p>
+                          </div>
+
+                          {/* Price & Stock Footer */}
+                          <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-baseline justify-between">
+                            <div>
+                              <span className="text-sm font-bold text-emerald-400">
+                                {formatPHP(product.price)}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-medium ml-0.5">
+                                /{product.unit}
+                              </span>
+                            </div>
+                            <span className={`text-[10px] font-mono ${
+                              isOutOfStock ? 'text-red-400 font-bold' : isLowStock ? 'text-amber-400' : 'text-slate-500'
+                            }`}>
+                              {isOutOfStock ? 'OUT' : `${product.stock} ${product.unit}`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: POS Register Cart & Checkout */}
+            <div className="w-96 md:w-[420px] lg:w-[460px] flex flex-col bg-slate-900 border-l border-slate-800 shrink-0">
+              
+              {/* Register Header & Customer Type Selector */}
+              <div className="p-3 bg-slate-900 border-b border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Mamimili / Discount:</span>
+                  </div>
+                  <span className="text-xs font-mono text-emerald-400 font-semibold">
+                    {cart.reduce((sum, item) => sum + (item.isWeighed ? 1 : item.qty), 0)} {cart.length === 1 ? 'item' : 'items'}
+                  </span>
+                </div>
+
+                {/* Senior Citizen / PWD / Regular Selector */}
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                  <button
+                    onClick={() => {
+                      setCustomerType('REGULAR');
+                      setSeniorId('');
+                      setSeniorName('');
+                    }}
+                    className={`py-1.5 text-xs font-semibold rounded-lg transition ${
+                      customerType === 'REGULAR'
+                        ? 'bg-slate-800 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Regular
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const id = prompt('Ilagay ang Senior Citizen OSCA ID No.:', seniorId);
+                      if (id !== null) {
+                        setCustomerType('SENIOR');
+                        setSeniorId(id);
+                        if (!seniorName) {
+                          const name = prompt('Pangalan ng Senior Citizen:');
+                          if (name) setSeniorName(name);
+                        }
+                      }
+                    }}
+                    className={`py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1 ${
+                      customerType === 'SENIOR'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'text-amber-400 hover:bg-slate-900'
+                    }`}
+                  >
+                    <span>🧓</span>
+                    <span>Senior (5%)</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const id = prompt('Ilagay ang PWD ID No.:', seniorId);
+                      if (id !== null) {
+                        setCustomerType('PWD');
+                        setSeniorId(id);
+                        if (!seniorName) {
+                          const name = prompt('Pangalan ng PWD Customer:');
+                          if (name) setSeniorName(name);
+                        }
+                      }
+                    }}
+                    className={`py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1 ${
+                      customerType === 'PWD'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-blue-400 hover:bg-slate-900'
+                    }`}
+                  >
+                    <span>♿</span>
+                    <span>PWD (5%)</span>
+                  </button>
+                </div>
+
+                {/* SC/PWD Info banner if applied */}
+                {(customerType === 'SENIOR' || customerType === 'PWD') && (
+                  <div className="p-2 bg-amber-950/40 border border-amber-600/40 rounded-lg flex items-center justify-between text-[11px] text-amber-200">
+                    <div>
+                      <p className="font-semibold">
+                        {customerType === 'SENIOR' ? 'Senior Citizen' : 'PWD'} Discount (RA 9994 / RA 10754)
+                      </p>
+                      <p className="text-amber-400/80 font-mono">
+                        ID: {seniorId || 'Verified'} {seniorName ? `• ${seniorName}` : ''}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setCustomerType('REGULAR');
+                        setSeniorId('');
+                        setSeniorName('');
+                      }}
+                      className="text-amber-400 hover:text-white underline text-[10px]"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Cart Item Rows */}
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-800/80 px-3">
+                {cart.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-500 py-16">
+                    <span className="text-4xl mb-3">🛍️</span>
+                    <p className="text-sm font-semibold text-slate-400">Walang laman ang cart</p>
+                    <p className="text-xs text-slate-500 mt-1 text-center max-w-xs">
+                      Pumili ng produkto sa kaliwa, i-scan ang barcode, o i-type ang PLU code.
+                    </p>
+                  </div>
+                ) : (
+                  cart.map(item => (
+                    <div key={item.id} className="py-2.5 flex items-start justify-between gap-2 group">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base">{item.image}</span>
+                          <h4 className="text-xs font-semibold text-slate-200 truncate">
+                            {item.name}
+                          </h4>
+                          {item.isVatExempt ? (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-teal-500/20 text-teal-300 font-mono">
+                              E
+                            </span>
+                          ) : (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                              V
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                          <span>{formatPHP(item.price)}/{item.unit}</span>
+                          <span>•</span>
+                          <span className="font-mono font-medium text-emerald-400">
+                            {item.qty} {item.unit}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Quantity Modifier & Line Total */}
+                      <div className="flex items-center space-x-2 shrink-0">
+                        {item.isWeighed ? (
+                          <button
+                            onClick={() => {
+                              const newWeight = prompt(`Baguhin ang timbang para sa ${item.name} (sa kg):`, item.qty);
+                              if (newWeight && !isNaN(newWeight)) {
+                                updateCartQty(item.id, parseFloat(newWeight));
+                              }
+                            }}
+                            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] font-mono text-blue-300 border border-slate-700"
+                          >
+                            ⚖️ Edit kg
+                          </button>
+                        ) : (
+                          <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
+                            <button
+                              onClick={() => updateCartQty(item.id, item.qty - 1)}
+                              className="w-6 h-6 flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white"
+                            >
+                              -
+                            </button>
+                            <span className="w-7 text-center text-xs font-semibold text-slate-200 font-mono">
+                              {item.qty}
+                            </span>
+                            <button
+                              onClick={() => updateCartQty(item.id, item.qty + 1)}
+                              className="w-6 h-6 flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white"
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+
+                        <span className="w-16 text-right font-bold text-xs text-slate-100 font-mono">
+                          {formatPHP(item.total)}
+                        </span>
+
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="text-slate-500 hover:text-red-400 text-sm pl-1"
+                          title="Alisin ang produkto"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Cart Summary & Philippine Tax Breakdown */}
+              <div className="p-3 bg-slate-950 border-t border-slate-800 space-y-2 shrink-0">
+                {/* Eco Bag Toggle */}
+                <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer p-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <span>🛍️</span>
+                    <span>Sando Bag / Eco Bag (+₱2.00)</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={includeEcoBag}
+                    onChange={(e) => setIncludeEcoBag(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-800 border-slate-700"
+                  />
+                </label>
+
+                {/* BIR Tax and Discount Breakdown */}
+                <div className="space-y-1 text-xs text-slate-400 pt-1">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span className="font-mono text-slate-200">{formatPHP(totals.grossSubtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-500">
+                    <span>VATable Sales (Net of 12%):</span>
+                    <span className="font-mono">{formatPHP(totals.vatableNet)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-500">
+                    <span>VAT Amount (12%):</span>
+                    <span className="font-mono">{formatPHP(totals.vatAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-500">
+                    <span>VAT-Exempt Produce/Meat Sales:</span>
+                    <span className="font-mono">{formatPHP(totals.vatExemptGross)}</span>
+                  </div>
+
+                  {totals.scDiscount > 0 && (
+                    <div className="flex justify-between text-amber-400 font-semibold">
+                      <span>Less: 5% {customerType} Discount:</span>
+                      <span className="font-mono">-{formatPHP(totals.scDiscount)}</span>
+                    </div>
+                  )}
+
+                  {includeEcoBag && (
+                    <div className="flex justify-between text-slate-400">
+                      <span>Eco Bag Fee:</span>
+                      <span className="font-mono">{formatPHP(totals.bagFee)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-baseline pt-2 border-t border-slate-800">
+                    <span className="font-bold text-sm text-slate-100">Kabuuan (Total Due):</span>
+                    <span className="font-extrabold text-2xl text-emerald-400 font-mono">
+                      {formatPHP(totals.totalDue)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Checkout & Park Action Buttons */}
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <button
+                    onClick={clearCart}
+                    disabled={cart.length === 0}
+                    className="py-2.5 px-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-red-400 border border-slate-800 rounded-xl text-xs font-semibold transition"
+                  >
+                    🗑️ Clear
+                  </button>
+
+                  <button
+                    onClick={parkCurrentCart}
+                    disabled={cart.length === 0}
+                    className="py-2.5 px-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-amber-300 border border-slate-800 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1"
+                  >
+                    <span>⏸️</span>
+                    <span>Hold Order</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsCheckoutOpen(true)}
+                    disabled={cart.length === 0}
+                    className="col-span-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-1.5"
+                  >
+                    <span>Bayad (F12)</span>
+                    <span>➜</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================= */}
+          {/* DIGITAL SCALE SIMULATOR MODAL (For Weighed Items /kg)     */}
+          {/* ========================================================= */}
+          {scaleModalItem && (
+            <ScaleModal
+              item={scaleModalItem}
+              onClose={() => setScaleModalItem(null)}
+              onConfirm={(weight) => handleAddWeighedItem(scaleModalItem, weight)}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* CHECKOUT MODAL (Cash Tender & Change, GCash, Maya, Card)   */}
+          {/* ========================================================= */}
+          {isCheckoutOpen && (
+            <CheckoutModal
+              totals={totals}
+              customerType={customerType}
+              seniorId={seniorId}
+              seniorName={seniorName}
+              onClose={() => setIsCheckoutOpen(false)}
+              onComplete={handleCompleteTransaction}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* 80mm THERMAL RECEIPT MODAL                                */}
+          {/* ========================================================= */}
+          {lastReceipt && (
+            <ReceiptModal
+              receipt={lastReceipt}
+              onClose={() => setLastReceipt(null)}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* INVENTORY & PRODUCT MANAGEMENT MODAL                      */}
+          {/* ========================================================= */}
+          {isInventoryOpen && (
+            <InventoryModal
+              products={products}
+              setProducts={setProducts}
+              onClose={() => setIsInventoryOpen(false)}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* SHIFT REPORT & Z-REPORT MODAL                            */}
+          {/* ========================================================= */}
+          {isShiftModalOpen && (
+            <ShiftReportModal
+              sales={completedSales}
+              cashierName={cashierName}
+              storeInfo={storeInfo}
+              onClose={() => setIsShiftModalOpen(false)}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* PARKED / HELD ORDERS MODAL                                */}
+          {/* ========================================================= */}
+          {isParkedModalOpen && (
+            <ParkedOrdersModal
+              orders={parkedOrders}
+              onRecall={recallParkedOrder}
+              onDelete={(id) => setParkedOrders(prev => prev.filter(p => p.id !== id))}
+              onClose={() => setIsParkedModalOpen(false)}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // =========================================================
+    // ⚖️ DIGITAL WEIGHING SCALE COMPONENT
+    // =========================================================
+    function ScaleModal({ item, onClose, onConfirm }) {
+      const [weight, setWeight] = useState(1.000);
+      const [isStable, setIsStable] = useState(true);
+
+      const addWeight = (delta) => {
+        setIsStable(false);
+        setWeight(prev => {
+          const next = Math.max(0.05, Number((prev + delta).toFixed(3)));
+          return next;
+        });
+        setTimeout(() => setIsStable(true), 200);
+      };
+
+      const lineTotal = Number((weight * item.price).toFixed(2));
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl">{item.image}</span>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">{item.name}</h3>
+                  <p className="text-xs text-emerald-400 font-mono">
+                    {formatPHP(item.price)} / kg
+                  </p>
+                </div>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            {/* Realistic Digital Scale Display */}
+            <div className="p-6 bg-slate-950 flex flex-col items-center">
+              <div className="w-full bg-emerald-950/40 border-2 border-emerald-600/50 rounded-2xl p-5 text-center shadow-inner relative">
+                <div className="flex justify-between items-center text-[10px] text-emerald-400 font-mono tracking-widest uppercase mb-1">
+                  <span>SCALE SENSOR #01</span>
+                  <span className={`px-2 py-0.5 rounded font-bold ${isStable ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300 animate-pulse'}`}>
+                    {isStable ? '● STABLE' : '○ WEIGHING...'}
+                  </span>
+                </div>
+                
+                {/* Weight Big Numbers */}
+                <div className="font-mono text-5xl font-extrabold tracking-tight text-emerald-400 my-2">
+                  {weight.toFixed(3)} <span className="text-2xl text-emerald-600 font-sans">kg</span>
+                </div>
+
+                <div className="flex justify-between items-center text-xs text-slate-400 font-mono border-t border-emerald-900/40 pt-2 mt-2">
+                  <span>Presyo: {formatPHP(item.price)}/kg</span>
+                  <span className="text-emerald-300 font-bold text-base">
+                    Total: {formatPHP(lineTotal)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Preset Weight Buttons */}
+              <div className="grid grid-cols-4 gap-2 w-full mt-5">
+                {[
+                  { label: '+100g', delta: 0.100 },
+                  { label: '+250g', delta: 0.250 },
+                  { label: '+500g', delta: 0.500 },
+                  { label: '+1.0kg', delta: 1.000 },
+                ].map(p => (
+                  <button
+                    key={p.label}
+                    onClick={() => addWeight(p.delta)}
+                    className="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 active:scale-95 transition"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Direct Manual Weight Input */}
+              <div className="flex items-center gap-2 w-full mt-3">
+                <button
+                  onClick={() => setWeight(0.500)}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-mono text-slate-300 border border-slate-700"
+                >
+                  Tare / 0.5kg
+                </button>
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0.01"
+                  value={weight}
+                  onChange={(e) => setWeight(Math.max(0.01, parseFloat(e.target.value) || 0))}
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
+                  placeholder="I-type ang timbang (kg)"
+                />
+                <button
+                  onClick={() => setWeight(1.000)}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-mono text-slate-300 border border-slate-700"
+                >
+                  Reset 1kg
+                </button>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 bg-slate-850 border-t border-slate-800 flex justify-end gap-3">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-300"
+              >
+                Kanselahin
+              </button>
+              <button
+                onClick={() => onConfirm(weight)}
+                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950 flex items-center gap-1.5"
+              >
+                <span>Ilagay sa Cart</span>
+                <span>({formatPHP(lineTotal)})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================
+    // 💵 CHECKOUT MODAL (Cash Tender & Change, GCash, Maya, Card)
+    // =========================================================
+    function CheckoutModal({ totals, customerType, seniorId, seniorName, onClose, onComplete }) {
+      const [method, setMethod] = useState('CASH'); // 'CASH', 'GCASH', 'MAYA', 'CARD'
+      const [tenderedAmount, setTenderedAmount] = useState(totals.totalDue);
+      const [referenceNo, setReferenceNo] = useState('');
+
+      const totalDue = totals.totalDue;
+      const changeDue = Math.max(0, Number((tenderedAmount - totalDue).toFixed(2)));
+      const isSufficient = tenderedAmount >= totalDue;
+
+      // Philippine Cash Denomination Breakdown
+      const changeBreakdown = useMemo(() => {
+        let remainder = Math.round(changeDue);
+        const denominations = [1000, 500, 200, 100, 50, 20, 10, 5, 1];
+        const breakdown = [];
+
+        denominations.forEach(denom => {
+          if (remainder >= denom) {
+            const count = Math.floor(remainder / denom);
+            breakdown.push({ denom, count });
+            remainder %= denom;
+          }
+        });
+        return breakdown;
+      }, [changeDue]);
+
+      const handlePresetBill = (billValue) => {
+        setTenderedAmount(billValue);
+      };
+
+      const handleAddBill = (billValue) => {
+        setTenderedAmount(prev => Number((prev + billValue).toFixed(2)));
+      };
+
+      const submitPayment = () => {
+        if (method === 'CASH' && !isSufficient) {
+          alert('Kulang po ang ibinayad na cash!');
+          return;
+        }
+
+        onComplete({
+          method,
+          tendered: method === 'CASH' ? tenderedAmount : totalDue,
+          change: method === 'CASH' ? changeDue : 0,
+          referenceNo: (method === 'GCASH' || method === 'MAYA' || method === 'CARD') ? (referenceNo || 'REF-' + Math.floor(10000000 + Math.random() * 90000000)) : null
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl flex flex-col">
+            
+            {/* Header */}
+            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-100">Bayad at Pag-checkout</h3>
+                <p className="text-xs text-slate-400">
+                  Kabuuang Babayaran: <span className="font-bold text-emerald-400 font-mono">{formatPHP(totalDue)}</span>
+                </p>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            {/* Payment Method Selector Tabs */}
+            <div className="p-4 bg-slate-950 border-b border-slate-800">
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { id: 'CASH', label: '💵 Cash', sub: 'Philippine Peso' },
+                  { id: 'GCASH', label: '📱 GCash', sub: 'E-Wallet QR' },
+                  { id: 'MAYA', label: '🟣 Maya', sub: 'E-Wallet / Card' },
+                  { id: 'CARD', label: '💳 Debit / Card', sub: 'BDO / Maya Terminal' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setMethod(tab.id)}
+                    className={`p-3 rounded-xl border text-left transition ${
+                      method === tab.id
+                        ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300 shadow-md'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="font-bold text-xs">{tab.label}</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">{tab.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tab Body */}
+            <div className="p-6 flex-1 overflow-y-auto space-y-4">
+              
+              {/* CASH PAYMENT MODE */}
+              {method === 'CASH' && (
+                <div className="space-y-4">
+                  {/* Tendered Input & Change Box */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                      <label className="text-xs text-slate-400 font-medium block mb-1">
+                        Ibinayad na Cash (Tendered):
+                      </label>
+                      <div className="flex items-center">
+                        <span className="text-emerald-400 text-xl font-bold font-mono mr-1">₱</span>
+                        <input
+                          type="number"
+                          step="1"
+                          value={tenderedAmount}
+                          onChange={(e) => setTenderedAmount(parseFloat(e.target.value) || 0)}
+                          className="w-full bg-transparent font-mono text-2xl font-bold text-slate-100 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className={`p-4 border rounded-xl flex flex-col justify-between ${
+                      isSufficient ? 'bg-emerald-950/30 border-emerald-600/40' : 'bg-red-950/30 border-red-600/40'
+                    }`}>
+                      <span className="text-xs font-medium text-slate-400">Sukli (Change Due):</span>
+                      <span className={`font-mono text-3xl font-extrabold ${isSufficient ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {formatPHP(changeDue)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Quick Philippine Peso Bill Buttons */}
+                  <div>
+                    <label className="text-xs text-slate-400 font-medium block mb-2">
+                      Mabilisang Pindot ng Salaping Papel (Exact / Bills):
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      <button
+                        onClick={() => handlePresetBill(totalDue)}
+                        className="py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-emerald-400 rounded-xl border border-slate-700"
+                      >
+                        Exact Amount
+                      </button>
+                      <button
+                        onClick={() => handlePresetBill(1000)}
+                        className="py-2.5 bg-blue-950/60 hover:bg-blue-900 border border-blue-600/50 text-blue-300 text-xs font-bold rounded-xl"
+                      >
+                        ₱1,000 Bill
+                      </button>
+                      <button
+                        onClick={() => handlePresetBill(500)}
+                        className="py-2.5 bg-amber-950/60 hover:bg-amber-900 border border-amber-600/50 text-amber-300 text-xs font-bold rounded-xl"
+                      >
+                        ₱500 Bill
+                      </button>
+                      <button
+                        onClick={() => handlePresetBill(200)}
+                        className="py-2.5 bg-green-950/60 hover:bg-green-900 border border-green-600/50 text-green-300 text-xs font-bold rounded-xl"
+                      >
+                        ₱200 Bill
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 mt-2">
+                      <button
+                        onClick={() => handlePresetBill(100)}
+                        className="py-2 bg-purple-950/60 hover:bg-purple-900 border border-purple-600/50 text-purple-300 text-xs font-bold rounded-xl"
+                      >
+                        ₱100 Bill
+                      </button>
+                      <button
+                        onClick={() => handlePresetBill(50)}
+                        className="py-2 bg-rose-950/60 hover:bg-rose-900 border border-rose-600/50 text-rose-300 text-xs font-bold rounded-xl"
+                      >
+                        ₱50 Bill
+                      </button>
+                      <button
+                        onClick={() => handlePresetBill(20)}
+                        className="py-2 bg-orange-950/60 hover:bg-orange-900 border border-orange-600/50 text-orange-300 text-xs font-bold rounded-xl"
+                      >
+                        ₱20 Bill
+                      </button>
+                      <button
+                        onClick={() => handleAddBill(100)}
+                        className="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl"
+                      >
+                        +₱100
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sukli Breakdown Guide for Cashier */}
+                  {changeDue > 0 && (
+                    <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                      <span className="text-[11px] font-semibold text-slate-400 block mb-1.5 uppercase tracking-wider">
+                        💡 Gabay sa Pagbibilang ng Sukli:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {changeBreakdown.map(item => (
+                          <span
+                            key={item.denom}
+                            className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-xs font-mono text-emerald-300"
+                          >
+                            {item.count}x <strong>₱{item.denom}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* GCASH PAYMENT MODE */}
+              {method === 'GCASH' && (
+                <div className="flex flex-col items-center text-center p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-3xl shadow-lg">
+                    📱
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-blue-400">Scan to Pay via GCash QR</h4>
+                    <p className="text-xs text-slate-400 mt-1">Merchant: Maharlika Supermarket (0917-882-9090)</p>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl shadow-md">
+                    {/* Simulated QR Code Graphic */}
+                    <div className="w-40 h-40 bg-slate-100 flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-400 rounded">
+                      <span className="text-4xl">🏁</span>
+                      <span className="text-[10px] text-slate-800 font-mono font-bold mt-1">GCASH PH QR CODE</span>
+                      <span className="text-xs text-blue-600 font-bold mt-0.5">{formatPHP(totalDue)}</span>
+                    </div>
+                  </div>
+                  <div className="w-full max-w-xs text-left">
+                    <label className="text-[11px] text-slate-400 block mb-1">GCash Reference No. (Optional):</label>
+                    <input
+                      type="text"
+                      value={referenceNo}
+                      onChange={(e) => setReferenceNo(e.target.value)}
+                      placeholder="Halimbawa: 9024 1123 4819"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* MAYA PAYMENT MODE */}
+              {method === 'MAYA' && (
+                <div className="flex flex-col items-center text-center p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center text-3xl shadow-lg">
+                    🟣
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-emerald-400">Scan to Pay via Maya QR</h4>
+                    <p className="text-xs text-slate-400 mt-1">Merchant: Maharlika Supermarket POS</p>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl shadow-md">
+                    <div className="w-40 h-40 bg-slate-100 flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-400 rounded">
+                      <span className="text-4xl">🏁</span>
+                      <span className="text-[10px] text-slate-800 font-mono font-bold mt-1">MAYA STATIC QR</span>
+                      <span className="text-xs text-emerald-600 font-bold mt-0.5">{formatPHP(totalDue)}</span>
+                    </div>
+                  </div>
+                  <div className="w-full max-w-xs text-left">
+                    <label className="text-[11px] text-slate-400 block mb-1">Maya Reference No.:</label>
+                    <input
+                      type="text"
+                      value={referenceNo}
+                      onChange={(e) => setReferenceNo(e.target.value)}
+                      placeholder="Halimbawa: MY-8829-410"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* CARD PAYMENT MODE */}
+              {method === 'CARD' && (
+                <div className="p-6 bg-slate-950 rounded-xl border border-slate-800 space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-3xl">💳</span>
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-200">BDO / Maya Terminal POS</h4>
+                      <p className="text-xs text-slate-400">Swipe, Dip chip, or Tap contactless card.</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Terminal Approval Code / Auth Code:</label>
+                    <input
+                      type="text"
+                      value={referenceNo}
+                      onChange={(e) => setReferenceNo(e.target.value)}
+                      placeholder="Hal. 082491"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 bg-slate-850 border-t border-slate-800 flex justify-between items-center">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-300"
+              >
+                Bumalik
+              </button>
+              
+              <button
+                onClick={submitPayment}
+                disabled={method === 'CASH' && !isSufficient}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-950 flex items-center gap-2"
+              >
+                <span>Tapusin at Mag-print ng Resibo</span>
+                <span>🖨️</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================
+    // 🖨️ BIR COMPLIANT THERMAL RECEIPT MODAL
+    // =========================================================
+    function ReceiptModal({ receipt, onClose }) {
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="p-3 bg-slate-850 border-b border-slate-800 flex items-center justify-between no-print">
+              <h3 className="font-bold text-sm text-slate-100">Official Sales Receipt</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow"
+                >
+                  <span>🖨️ Print Receipt</span>
+                </button>
+                <button onClick={onClose} className="text-slate-400 hover:text-white text-base">✕</button>
+              </div>
+            </div>
+
+            {/* Scrollable Receipt Preview (Printable Area) */}
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-950 flex justify-center">
+              <div
+                id="printable-receipt"
+                className="w-full max-w-[340px] bg-white text-slate-900 p-4 text-[11px] font-mono leading-tight shadow-xl border border-slate-200"
+              >
+                {/* Store Header */}
+                <div className="text-center pb-3 border-b border-dashed border-slate-400">
+                  <h2 className="font-bold text-sm tracking-tight">{receipt.storeInfo.name}</h2>
+                  <p className="text-[10px] text-slate-600 mt-0.5">{receipt.storeInfo.branch}</p>
+                  <p className="text-[9px] text-slate-500">VAT Reg TIN: {receipt.storeInfo.tin}</p>
+                  <p className="text-[9px] text-slate-500">Machine Serial: {receipt.storeInfo.serial}</p>
+                  <p className="text-[9px] text-slate-500">MIN: {receipt.storeInfo.min}</p>
+                  <p className="text-[9px] text-slate-500">Tel: {receipt.storeInfo.tel}</p>
+                  <p className="text-[10px] font-bold mt-1 text-slate-800 uppercase tracking-widest">
+                    OFFICIAL SALES INVOICE
+                  </p>
+                </div>
+
+                {/* Meta details */}
+                <div className="py-2 border-b border-dashed border-slate-400 space-y-0.5 text-[10px]">
+                  <div className="flex justify-between">
+                    <span>Invoice #: {receipt.orderNumber}</span>
+                    <span>{receipt.date}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Cashier: {receipt.cashier}</span>
+                    <span>{receipt.time}</span>
+                  </div>
+                  {receipt.customerType !== 'REGULAR' && (
+                    <div className="pt-0.5 text-slate-700">
+                      <div>DISCOUNT: {receipt.customerType} (5% BNPC)</div>
+                      <div>ID NO: {receipt.seniorId || 'N/A'} {receipt.seniorName ? `(${receipt.seniorName})` : ''}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Itemized Table */}
+                <div className="py-2 border-b border-dashed border-slate-400 space-y-1.5">
+                  <div className="flex justify-between font-bold text-[10px] border-b border-slate-200 pb-0.5">
+                    <span className="w-1/2">ITEM / DESCR</span>
+                    <span className="w-1/4 text-center">QTY/WT</span>
+                    <span className="w-1/4 text-right">TOTAL</span>
+                  </div>
+
+                  {receipt.items.map((it, idx) => (
+                    <div key={idx} className="flex justify-between items-start text-[10px]">
+                      <div className="w-1/2 pr-1">
+                        <div className="truncate font-medium">{it.name}</div>
+                        <div className="text-[9px] text-slate-500">
+                          @{formatPHP(it.price)} {it.isVatExempt ? '(E)' : '(V)'}
+                        </div>
+                      </div>
+                      <div className="w-1/4 text-center font-mono">
+                        {it.qty} {it.unit}
+                      </div>
+                      <div className="w-1/4 text-right font-mono font-semibold">
+                        {formatPHP(it.total)}
+                      </div>
+                    </div>
+                  ))}
+
+                  {receipt.totals.bagFee > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span className="w-1/2">Eco / Sando Bag Fee</span>
+                      <span className="w-1/4 text-center">1 pc</span>
+                      <span className="w-1/4 text-right font-mono font-semibold">{formatPHP(receipt.totals.bagFee)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Subtotals & Philippine BIR Tax Analysis */}
+                <div className="py-2 border-b border-dashed border-slate-400 space-y-1 text-[10px]">
+                  <div className="flex justify-between">
+                    <span>Subtotal Gross:</span>
+                    <span className="font-mono">{formatPHP(receipt.totals.grossSubtotal)}</span>
+                  </div>
+
+                  {receipt.totals.scDiscount > 0 && (
+                    <div className="flex justify-between font-semibold">
+                      <span>Less: 5% {receipt.customerType} Disc:</span>
+                      <span className="font-mono">-{formatPHP(receipt.totals.scDiscount)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between font-bold text-xs pt-1 border-t border-slate-300">
+                    <span>TOTAL AMOUNT DUE:</span>
+                    <span className="font-mono font-extrabold">{formatPHP(receipt.totals.totalDue)}</span>
+                  </div>
+                </div>
+
+                {/* Payment & Change */}
+                <div className="py-2 border-b border-dashed border-slate-400 space-y-0.5 text-[10px]">
+                  <div className="flex justify-between">
+                    <span>Payment Method:</span>
+                    <span className="font-bold">{receipt.payment.method}</span>
+                  </div>
+                  {receipt.payment.referenceNo && (
+                    <div className="flex justify-between text-[9px] text-slate-600">
+                      <span>Ref No:</span>
+                      <span>{receipt.payment.referenceNo}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Amount Tendered:</span>
+                    <span className="font-mono">{formatPHP(receipt.payment.tendered)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold">
+                    <span>Change:</span>
+                    <span className="font-mono">{formatPHP(receipt.payment.change)}</span>
+                  </div>
+                </div>
+
+                {/* Philippine VAT Breakdown Breakdown */}
+                <div className="py-2 border-b border-dashed border-slate-400 space-y-0.5 text-[9px] text-slate-600">
+                  <div className="font-bold text-[10px] text-slate-800">TAX BREAKDOWN:</div>
+                  <div className="flex justify-between">
+                    <span>VATable Sales:</span>
+                    <span className="font-mono">{formatPHP(receipt.totals.vatableNet)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>VAT Amount (12%):</span>
+                    <span className="font-mono">{formatPHP(receipt.totals.vatAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>VAT-Exempt Sales:</span>
+                    <span className="font-mono">{formatPHP(receipt.totals.vatExemptGross)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Zero Rated Sales:</span>
+                    <span className="font-mono">₱0.00</span>
+                  </div>
+                </div>
+
+                {/* Barcode / Footer */}
+                <div className="text-center pt-3 text-[9px] space-y-1 text-slate-600">
+                  <div className="font-mono tracking-widest text-xs font-bold text-slate-800">
+                    ||||| | |||| |||||| |||| | |||||
+                  </div>
+                  <p className="font-mono">{receipt.orderNumber}</p>
+                  <p className="font-semibold text-slate-800 mt-1">Maraming Salamat Po sa Inyong Pagtangkilik!</p>
+                  <p className="text-[8px] text-slate-500">
+                    THIS INVOICE/RECEIPT SHALL BE VALID FOR FIVE (5) YEARS FROM THE DATE OF THE PERMIT TO USE.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Close */}
+            <div className="p-3 bg-slate-850 border-t border-slate-800 flex justify-end no-print">
+              <button
+                onClick={onClose}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold"
+              >
+                Isara
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================
+    // 📦 INVENTORY MANAGEMENT MODAL
+    // =========================================================
+    function InventoryModal({ products, setProducts, onClose }) {
+      const [filter, setFilter] = useState('');
+      const [editingId, setEditingId] = useState(null);
+      const [editPrice, setEditPrice] = useState(0);
+      const [editStock, setEditStock] = useState(0);
+
+      const filtered = products.filter(p =>
+        !filter ||
+        p.name.toLowerCase().includes(filter.toLowerCase()) ||
+        p.barcode.includes(filter) ||
+        (p.plu && p.plu.includes(filter))
+      );
+
+      const startEdit = (p) => {
+        setEditingId(p.id);
+        setEditPrice(p.price);
+        setEditStock(p.stock);
+      };
+
+      const saveEdit = (id) => {
+        setProducts(prev => prev.map(p => {
+          if (p.id === id) {
+            return {
+              ...p,
+              price: parseFloat(editPrice) || p.price,
+              stock: parseFloat(editStock) || p.stock
+            };
+          }
+          return p;
+        }));
+        setEditingId(null);
+      };
+
+      const restockItem = (id, amount) => {
+        setProducts(prev => prev.map(p => {
+          if (p.id === id) {
+            return { ...p, stock: Number((p.stock + amount).toFixed(3)) };
+          }
+          return p;
+        }));
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full h-[85vh] overflow-hidden shadow-2xl flex flex-col">
+            
+            {/* Header */}
+            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">📦</span>
+                <h3 className="font-bold text-sm text-slate-100">Pamamahala ng Imbentaryo at Presyo (Inventory SRP)</h3>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            {/* Filter Search */}
+            <div className="p-3 bg-slate-950 border-b border-slate-800 flex items-center gap-3">
+              <input
+                type="text"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="I-filter ayon sa pangalan, barcode, o PLU..."
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+              />
+              <span className="text-xs text-slate-400 font-mono shrink-0">
+                {filtered.length} produkto
+              </span>
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-y-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-950 text-slate-400 sticky top-0 border-b border-slate-800">
+                  <tr>
+                    <th className="p-3">Produkto</th>
+                    <th className="p-3">Kategorya</th>
+                    <th className="p-3 font-mono">Barcode / PLU</th>
+                    <th className="p-3 text-right">Puhunan (Cost)</th>
+                    <th className="p-3 text-right">Presyo (SRP)</th>
+                    <th className="p-3 text-right">Stock</th>
+                    <th className="p-3 text-center">Aksyon</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80">
+                  {filtered.map(p => {
+                    const isEditing = editingId === p.id;
+                    const isLow = p.stock <= 10;
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-850/50">
+                        <td className="p-3 font-medium text-slate-200">
+                          <span className="mr-2">{p.image}</span>
+                          {p.name}
+                        </td>
+                        <td className="p-3 text-slate-400">{p.category}</td>
+                        <td className="p-3 font-mono text-[11px] text-slate-400">
+                          {p.plu ? `PLU: ${p.plu}` : p.barcode}
+                        </td>
+                        <td className="p-3 text-right font-mono text-slate-400">
+                          {formatPHP(p.cost)}
+                        </td>
+                        <td className="p-3 text-right font-mono">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={editPrice}
+                              onChange={(e) => setEditPrice(e.target.value)}
+                              className="w-20 bg-slate-950 border border-emerald-500 rounded px-1.5 py-0.5 text-right text-xs text-emerald-400 font-mono"
+                            />
+                          ) : (
+                            <span className="font-bold text-emerald-400">{formatPHP(p.price)}</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right font-mono">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editStock}
+                              onChange={(e) => setEditStock(e.target.value)}
+                              className="w-16 bg-slate-950 border border-emerald-500 rounded px-1.5 py-0.5 text-right text-xs text-slate-200 font-mono"
+                            />
+                          ) : (
+                            <span className={isLow ? 'text-amber-400 font-bold' : 'text-slate-300'}>
+                              {p.stock} {p.unit}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center space-x-1">
+                          {isEditing ? (
+                            <button
+                              onClick={() => saveEdit(p.id)}
+                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 rounded text-[11px] font-bold text-white"
+                            >
+                              Save
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => startEdit(p)}
+                                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px]"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => restockItem(p.id, p.isWeighed ? 20 : 50)}
+                                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded text-[11px]"
+                                title="Quick restock"
+                              >
+                                +Restock
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 bg-slate-850 border-t border-slate-800 flex justify-between items-center">
+              <span className="text-xs text-slate-400">
+                💡 Ang mga bagong presyo at stock ay awtomatikong nai-save sa browser memory.
+              </span>
+              <button
+                onClick={onClose}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold text-slate-200"
+              >
+                Isara
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================
+    // 📊 SHIFT SALES & BIR Z-REPORT MODAL
+    // =========================================================
+    function ShiftReportModal({ sales, cashierName, storeInfo, onClose }) {
+      const shiftSummary = useMemo(() => {
+        let totalRevenue = 0;
+        let totalCash = 0;
+        let totalGCash = 0;
+        let totalMaya = 0;
+        let totalCard = 0;
+        let totalVat = 0;
+        let totalVatExempt = 0;
+        let totalDiscounts = 0;
+
+        sales.forEach(sale => {
+          totalRevenue += sale.totals.totalDue;
+          totalVat += sale.totals.vatAmount;
+          totalVatExempt += sale.totals.vatExemptGross;
+          totalDiscounts += sale.totals.scDiscount;
+
+          if (sale.payment.method === 'CASH') totalCash += sale.totals.totalDue;
+          else if (sale.payment.method === 'GCASH') totalGCash += sale.totals.totalDue;
+          else if (sale.payment.method === 'MAYA') totalMaya += sale.totals.totalDue;
+          else if (sale.payment.method === 'CARD') totalCard += sale.totals.totalDue;
+        });
+
+        return {
+          totalOrders: sales.length,
+          totalRevenue,
+          totalCash,
+          totalGCash,
+          totalMaya,
+          totalCard,
+          totalVat,
+          totalVatExempt,
+          totalDiscounts,
+          avgTicket: sales.length ? (totalRevenue / sales.length) : 0
+        };
+      }, [sales]);
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">📊</span>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100">Ulat ng Shift at Benta (Z-Report)</h3>
+                  <p className="text-xs text-slate-400">Cashier: {cashierName} • {new Date().toLocaleDateString('en-PH')}</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            {/* Metrics Grid */}
+            <div className="p-5 overflow-y-auto space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                  <span className="text-xs text-slate-400">Kabuuang Benta (Gross Sales):</span>
+                  <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">
+                    {formatPHP(shiftSummary.totalRevenue)}
+                  </div>
+                </div>
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                  <span className="text-xs text-slate-400">Bilang ng Transaksyon:</span>
+                  <div className="text-2xl font-bold font-mono text-slate-100 mt-1">
+                    {shiftSummary.totalOrders}
+                  </div>
+                </div>
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                  <span className="text-xs text-slate-400">Average Basket:</span>
+                  <div className="text-2xl font-bold font-mono text-slate-100 mt-1">
+                    {formatPHP(shiftSummary.avgTicket)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Tender Breakdown */}
+              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider">
+                  Koleksyon Ayon sa Paraan ng Pagbabayad:
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                  <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
+                    <span className="text-slate-400 block">💵 Cash sa Drawer:</span>
+                    <span className="font-bold font-mono text-emerald-400">{formatPHP(shiftSummary.totalCash)}</span>
+                  </div>
+                  <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
+                    <span className="text-slate-400 block">📱 GCash E-Wallet:</span>
+                    <span className="font-bold font-mono text-blue-400">{formatPHP(shiftSummary.totalGCash)}</span>
+                  </div>
+                  <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
+                    <span className="text-slate-400 block">🟣 Maya E-Wallet:</span>
+                    <span className="font-bold font-mono text-emerald-400">{formatPHP(shiftSummary.totalMaya)}</span>
+                  </div>
+                  <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
+                    <span className="text-slate-400 block">💳 Debit / Credit:</span>
+                    <span className="font-bold font-mono text-purple-400">{formatPHP(shiftSummary.totalCard)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* BIR Tax Breakdown */}
+              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5 text-xs">
+                <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider mb-2">
+                  BIR Official Sales Reconciliation:
+                </h4>
+                <div className="flex justify-between text-slate-400">
+                  <span>12% VAT Collected:</span>
+                  <span className="font-mono text-slate-200">{formatPHP(shiftSummary.totalVat)}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>VAT-Exempt Fresh Agricultural Sales:</span>
+                  <span className="font-mono text-slate-200">{formatPHP(shiftSummary.totalVatExempt)}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Senior / PWD 5% Discounts Given:</span>
+                  <span className="font-mono text-amber-400">-{formatPHP(shiftSummary.totalDiscounts)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-850 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-200"
+              >
+                Isara
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================
+    // ⏸️ PARKED / HELD CARTS MODAL
+    // =========================================================
+    function ParkedOrdersModal({ orders, onRecall, onDelete, onClose }) {
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            
+            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">⏸️</span>
+                <h3 className="font-bold text-sm text-slate-100">Mga Nakabinbing Cart (Held Orders)</h3>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-y-auto space-y-3">
+              {orders.length === 0 ? (
+                <div className="text-center py-10 text-slate-500">
+                  <span className="text-3xl">🧺</span>
+                  <p className="text-xs mt-2">Walang nakabinbing order sa kasalukuyan.</p>
+                </div>
+              ) : (
+                orders.map(order => {
+                  const itemCount = order.cart.reduce((s, it) => s + (it.isWeighed ? 1 : it.qty), 0);
+                  const orderTotal = order.cart.reduce((s, it) => s + it.total, 0);
+
+                  return (
+                    <div key={order.id} className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-amber-300">{order.note}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">{order.timestamp}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {itemCount} mga aytem • <span className="font-mono text-emerald-400 font-bold">{formatPHP(orderTotal)}</span>
+                        </p>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => onRecall(order)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow"
+                        >
+                          Ibalik (Recall)
+                        </button>
+                        <button
+                          onClick={() => onDelete(order.id)}
+                          className="text-slate-500 hover:text-red-400 text-sm p-1"
+                          title="Tanggalin"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="p-3 bg-slate-850 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold text-slate-200"
+              >
+                Isara
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Render React App
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>

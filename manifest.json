@@ -1,0 +1,17 @@
+{
+  "name": "Maharlika Supermarket POS (PHP)",
+  "short_name": "GroceryPOS",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#064e3b",
+  "theme_color": "#047857",
+  "description": "Philippine Grocery Store & Supermarket Point of Sale with Philippine Peso (₱), BIR VAT Compliance, and Barcode Scanning",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="groceryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="basketGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#047857" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background Rounded Shield -->
+  <rect width="512" height="512" rx="110" fill="url(#groceryGrad)"/>
+
+  <!-- Inner Soft Container -->
+  <rect x="24" y="24" width="464" height="464" rx="90" fill="#ffffff" fill-opacity="0.08"/>
+
+  <!-- Shopping Cart / Grocery Basket Illustration -->
+  <g filter="url(#shadow)" transform="translate(48, 56)">
+    <!-- Produce leaves & carrot/apple tops peaking out -->
+    <path d="M150 140 C140 90, 180 60, 205 100 C215 70, 255 75, 250 115 C280 80, 315 105, 300 140 Z" fill="#34d399" />
+    <circle cx="180" cy="140" r="34" fill="#ef4444" />
+    <circle cx="280" cy="145" r="30" fill="#f59e0b" />
+    <ellipse cx="230" cy="130" r="28" rx="26" ry="32" fill="#fbbf24" />
+
+    <!-- Basket Body -->
+    <path d="M80 160 L336 160 L310 320 C306 345, 285 360, 260 360 L156 360 C131 360, 110 345, 106 320 Z" fill="url(#basketGrad)" stroke="#ecfdf5" stroke-width="8" stroke-linejoin="round"/>
+
+    <!-- Basket Lattice Grid -->
+    <path d="M110 200 L306 200 M118 250 L298 250 M128 300 L288 300" stroke="#ecfdf5" stroke-width="5" stroke-linecap="round" stroke-opacity="0.7"/>
+    <path d="M155 160 L170 360 M208 160 L208 360 M261 160 L246 360" stroke="#ecfdf5" stroke-width="5" stroke-linecap="round" stroke-opacity="0.7"/>
+
+    <!-- Basket Handle -->
+    <path d="M140 160 C140 60, 276 60, 276 160" fill="none" stroke="#ecfdf5" stroke-width="14" stroke-linecap="round"/>
+
+    <!-- Philippine Peso Badge on Basket -->
+    <circle cx="208" cy="250" r="44" fill="#fbbf24" stroke="#ffffff" stroke-width="4"/>
+    <text x="208" y="266" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="900" fill="#78350f" text-anchor="middle">₱</text>
+  </g>
+</svg>
