@@ -30,12 +30,30 @@ Open [`index.html`](./index.html) directly in any modern web browser (Google Chr
   - Interactive PIN lock screen with numeric touchscreen keypad to select cashier and unlock the register.
   - Active cashier's name and ID are stamped on all completed transactions, thermal receipts, and shift sales reports.
 
-### 3. 📱 Mobile App Install QR Code
-- Tap **📱 Mobile App** in the navigation bar to bring up an interactive high-resolution QR code.
-- Scan with any smartphone or tablet camera (Android or iOS) to open the POS immediately on the local network or web.
-- **Android**: Tap Chrome menu `⋮` &gt; tap **"Install app"** or **"Add to Home screen"**.
-- **iPhone / iPad**: Tap Safari Share button `⬆` &gt; tap **"Add to Home Screen"**.
-- Supports 100% offline capability via Service Worker (`sw.js`).
+### 3. 📱 Mobile Screen Fitting & PWA App
+- **Adaptive Mobile Layout (`100dvh`)**:
+  - Dynamically resizes to match mobile viewports without vertical overflow, address bar clipping, or awkward scrolling.
+  - Dedicated **Mobile Bottom Navigation Bar** (`Catalog`, `Cart (with live badge)`, `Add Item`, `Printers`, `More Options`).
+  - Seamless touch targets, responsive touch keypad, and collapsible side panels for single-handed mobile cashier operation.
+- **Mobile App Install QR Code**:
+  - Tap **📱 Mobile** or **QR Code** in the navigation bar to bring up an interactive high-resolution QR code.
+  - Scan with any smartphone or tablet camera (Android or iOS) to open the POS immediately on the local network or web.
+  - **Android**: Tap Chrome menu `⋮` &gt; tap **"Install app"** or **"Add to Home screen"**.
+  - **iPhone / iPad**: Tap Safari Share button `⬆` &gt; tap **"Add to Home Screen"**.
+  - Supports 100% offline capability via Service Worker (`sw.js`).
+
+### 4. 🖨️ Available Printers List & Thermal POS Hardware
+- **Available Printers Button**:
+  - Direct access via the header **🖨️ Printers** button (with live green pulse status) and the mobile bottom navigation bar.
+- **Hardware Integration Options**:
+  - **Bluetooth ESC/POS Thermal Printers**: One-tap scan and pair via Web Bluetooth API for portable mobile printers (Sunmi, Goojprt, PeriPage, MPT-II, etc.).
+  - **USB POS Printers**: Plug-and-play detection via WebUSB API (Epson TM-T88/T20, Xprinter, Rongta, POS-58/80).
+  - **System Default / AirPrint / Network**: Connects directly to local network printers, Windows spoolers, and iOS AirPrint.
+- **Paper Size Format Switch**:
+  - Instant toggle between **80mm Standard POS** (supermarket counter width) and **58mm Compact POS** (mobile belt clip width).
+- **Auto-Print & Test Print**:
+  - Toggle auto-receipt printing upon checkout completion.
+  - One-click **Test Receipt Print** directly inside the printer setup modal.
 
 ---
 
