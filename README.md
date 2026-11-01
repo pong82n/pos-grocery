@@ -35,11 +35,16 @@ Open [`index.html`](./index.html) directly in any modern web browser (Google Chr
   - Dynamically resizes to match mobile viewports without vertical overflow, address bar clipping, or awkward scrolling.
   - Dedicated **Mobile Bottom Navigation Bar** (`Catalog`, `Cart (with live badge)`, `Add Item`, `Printers`, `More Options`).
   - Seamless touch targets, responsive touch keypad, and collapsible side panels for single-handed mobile cashier operation.
-- **Mobile App Install QR Code**:
-  - Tap **📱 Mobile** or **QR Code** in the navigation bar to bring up an interactive high-resolution QR code.
-  - Scan with any smartphone or tablet camera (Android or iOS) to open the POS immediately on the local network or web.
-  - **Android**: Tap Chrome menu `⋮` &gt; tap **"Install app"** or **"Add to Home screen"**.
-  - **iPhone / iPad**: Tap Safari Share button `⬆` &gt; tap **"Add to Home Screen"**.
+- **Mobile App POS Creation & Installation via QR Code**:
+  - Tap **📱 Mobile App QR** in the top navigation bar or **📱 Mobile QR** in the mobile navigation menu.
+  - **High-Resolution QR Code**: Rendered using Level-H error correction for instant camera focus, even in dim store lighting or at an angle.
+  - **Host Selector**: Easily toggle between **🌐 Cloud App** (`https://pong82n.github.io/pos-grocery/`) and **💻 Current Host / Local Wi-Fi IP**.
+  - **🖨️ Print Countertop QR Placard**: One-click preview & print of an official store QR placard (*CHA Convenience Store, Bankers Subd. Antipolo City, Rizal*) to stick on cashier checkout counters.
+  - **💾 Save QR Image**: Downloads the QR code as a PNG file for staff messaging or signage.
+  - **📤 Direct App Share**: Native Web Share sheet integration to send the mobile POS link directly to cashiers via Messenger, WhatsApp, or SMS.
+  - **Installation Guides**:
+    - **Android (Chrome)**: Scan QR ➔ Tap `⋮` ➔ Select **"Install app"**. ChaPOS runs full screen as an installed APK / PWA app.
+    - **iPhone / iPad (Safari)**: Scan QR ➔ Tap Share button `⬆` ➔ Select **"Add to Home Screen"** (`[+]`).
   - Supports 100% offline capability via Service Worker (`sw.js`).
 
 ### 4. 🖨️ Available Printers List & Thermal POS Hardware

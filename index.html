@@ -767,13 +767,15 @@
                 <span>Cashiers</span>
               </button>
 
+              {/* 📱 CREATE / INSTALL MOBILE APP VIA QR CODE */}
               <button
                 onClick={() => setIsMobileQROpen(true)}
-                className="hidden lg:flex px-2.5 py-1.5 rounded-lg border border-blue-600/60 bg-blue-950/50 hover:bg-blue-900/60 text-blue-300 text-xs font-semibold items-center gap-1.5 transition shrink-0"
-                title="Mobile QR Code"
+                className="px-2 py-1.5 md:px-2.5 rounded-lg border border-indigo-500/70 bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-200 text-xs font-bold flex items-center gap-1.5 transition shrink-0 shadow-sm"
+                title="Create & Install Mobile App POS via QR Code"
               >
-                <span>📱</span>
-                <span>Mobile App</span>
+                <span className="text-sm">📱</span>
+                <span className="hidden sm:inline">Mobile App QR</span>
+                <span className="text-[10px] bg-indigo-500/30 text-indigo-300 px-1 py-0.2 rounded font-mono hidden md:inline">Install</span>
               </button>
 
               <button
@@ -2329,7 +2331,7 @@
     }
 
     // =========================================================
-    // 📱 MOBILE APP INSTALL QR MODAL
+    // 📱 MOBILE APP POS INSTALL THROUGH QR CODE MODAL
     // =========================================================
     function MobileInstallModal({ onClose }) {
       const qrContainerRef = useRef(null);
@@ -2339,6 +2341,7 @@
           : window.location.href.split('#')[0];
       });
       const [copied, setCopied] = useState(false);
+      const [activePlatformTab, setActivePlatformTab] = useState('android'); // 'android' | 'ios'
 
       useEffect(() => {
         if (qrContainerRef.current) {
@@ -2346,11 +2349,11 @@
           try {
             new QRCode(qrContainerRef.current, {
               text: customUrl,
-              width: 180,
-              height: 180,
-              colorDark: '#047857',
+              width: 200,
+              height: 200,
+              colorDark: '#064e3b',
               colorLight: '#ffffff',
-              correctLevel: QRCode.CorrectLevel.M
+              correctLevel: QRCode.CorrectLevel.H
             });
           } catch (e) {
             console.error(e);
@@ -2366,6 +2369,152 @@
         }
       };
 
+      const handleShare = async () => {
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: 'CHA Convenience Store POS',
+              text: 'Open and install CHA Convenience Store Mobile POS App:',
+              url: customUrl
+            });
+          } catch (e) {
+            console.log('Share canceled or not supported', e);
+          }
+        } else {
+          handleCopy();
+        }
+      };
+
+      const handleDownloadQR = () => {
+        if (!qrContainerRef.current) return;
+        const canvas = qrContainerRef.current.querySelector('canvas');
+        if (canvas) {
+          const url = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'cha-pos-mobile-qr.png';
+          a.click();
+          return;
+        }
+        const img = qrContainerRef.current.querySelector('img');
+        if (img && img.src) {
+          const a = document.createElement('a');
+          a.href = img.src;
+          a.download = 'cha-pos-mobile-qr.png';
+          a.click();
+        }
+      };
+
+      const handlePrintPlacard = () => {
+        if (!qrContainerRef.current) return;
+        const canvas = qrContainerRef.current.querySelector('canvas');
+        const img = qrContainerRef.current.querySelector('img');
+        const qrSrc = canvas ? canvas.toDataURL('image/png') : (img ? img.src : '');
+        
+        const printWindow = window.open('', '_blank', 'width=620,height=750');
+        if (!printWindow) {
+          alert('Please allow popups to preview and print the Countertop QR Placard.');
+          return;
+        }
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>CHA CONVENIENCE STORE - Mobile POS Installation QR Placard</title>
+              <style>
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                  text-align: center;
+                  padding: 24px;
+                  color: #0f172a;
+                  background: #ffffff;
+                }
+                .placard-box {
+                  border: 3px dashed #047857;
+                  border-radius: 20px;
+                  padding: 30px 24px;
+                  max-width: 440px;
+                  margin: 0 auto;
+                  box-sizing: border-box;
+                }
+                .badge {
+                  background: #047857;
+                  color: #ffffff;
+                  padding: 4px 12px;
+                  border-radius: 9999px;
+                  font-size: 11px;
+                  font-weight: 800;
+                  letter-spacing: 1px;
+                  display: inline-block;
+                }
+                h1 { margin: 10px 0 2px 0; font-size: 24px; color: #065f46; font-weight: 900; }
+                .address { font-size: 13px; color: #475569; margin-bottom: 12px; }
+                .subheading { font-size: 14px; font-weight: 800; color: #047857; margin-bottom: 16px; }
+                .qr-frame {
+                  display: inline-block;
+                  padding: 14px;
+                  border: 2px solid #cbd5e1;
+                  border-radius: 16px;
+                  background: #fff;
+                  margin-bottom: 14px;
+                }
+                .qr-frame img { display: block; width: 220px; height: 220px; margin: 0 auto; }
+                .url-text { font-size: 11px; font-family: monospace; color: #334155; word-break: break-all; margin-bottom: 16px; }
+                .steps-box {
+                  text-align: left;
+                  background: #f1f5f9;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 12px;
+                  padding: 12px 16px;
+                  font-size: 12px;
+                  line-height: 1.6;
+                  color: #1e293b;
+                }
+                .steps-box strong { color: #0f172a; }
+                .footer { margin-top: 16px; font-size: 11px; color: #64748b; }
+                @media print {
+                  button { display: none !important; }
+                  body { padding: 0; }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="placard-box">
+                <span class="badge">🏪 OFFICIAL MOBILE POS</span>
+                <h1>CHA CONVENIENCE STORE</h1>
+                <div class="address">Bankers Subd. Antipolo City, Rizal</div>
+                <div class="subheading">📱 SCAN WITH PHONE CAMERA TO OPEN POS</div>
+                
+                <div class="qr-frame">
+                  <img src="${qrSrc}" alt="Mobile POS QR Code" />
+                </div>
+
+                <div class="url-text">${customUrl}</div>
+
+                <div class="steps-box">
+                  <strong>📲 Install in 3 Easy Steps:</strong><br/>
+                  1. <strong>Scan:</strong> Open Camera on Android or iPhone & tap link.<br/>
+                  2. <strong>Android Install:</strong> Chrome menu (⋮) → <em>"Install app"</em>.<br/>
+                  3. <strong>iPhone Install:</strong> Safari Share (⬆) → <em>"Add to Home Screen"</em>.<br/>
+                  ⚡ <em>Runs 100% offline with camera barcode scanner & thermal receipts!</em>
+                </div>
+
+                <div class="footer">Keep this sign displayed at the cashier checkout station.</div>
+
+                <br/>
+                <button onclick="window.print()" style="padding: 10px 24px; background: #047857; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px;">
+                  🖨️ Print This Placard
+                </button>
+              </div>
+              <script>
+                setTimeout(() => { window.print(); }, 400);
+              <\/script>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      };
+
       const handleInstallApp = () => {
         if (window.deferredPWAInstallPrompt) {
           window.deferredPWAInstallPrompt.prompt();
@@ -2373,78 +2522,183 @@
             window.deferredPWAInstallPrompt = null;
           });
         } else {
-          alert('To install on your phone: scan this QR code with your phone camera, open in Chrome or Safari, and tap "Add to Home Screen".');
+          alert('To install on your phone:\n1. Scan this QR code with your phone camera.\n2. Open in Chrome (Android) or Safari (iPhone).\n3. Tap "Add to Home Screen" or "Install App".');
         }
       };
 
       return (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 md:p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full max-h-[94dvh] overflow-hidden shadow-2xl flex flex-col">
             
+            {/* Header */}
             <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center space-x-2">
                 <span className="text-xl">📱</span>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-100">Open & Install on Mobile</h3>
-                  <p className="text-xs text-slate-400">Available on Android & iPhone</p>
+                  <h3 className="font-bold text-sm text-slate-100">Mobile POS App via QR Code</h3>
+                  <p className="text-xs text-slate-400">Scan & Install on Android or iPhone</p>
                 </div>
               </div>
               <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
 
-            <div className="p-4 overflow-y-auto flex flex-col items-center text-center space-y-3">
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto flex flex-col items-center text-center space-y-3.5">
+              
+              {/* Preset Link Switches */}
+              <div className="w-full flex items-center justify-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl text-[11px]">
+                <button
+                  onClick={() => setCustomUrl(window.POS_PUBLIC_ONLINE_URL)}
+                  className={`flex-1 py-1.5 px-2 rounded-lg font-semibold transition ${
+                    customUrl === window.POS_PUBLIC_ONLINE_URL
+                      ? 'bg-emerald-600 text-white shadow'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  🌐 Cloud App (GitHub)
+                </button>
+                <button
+                  onClick={() => setCustomUrl(window.location.protocol === 'file:' ? window.POS_PUBLIC_ONLINE_URL : window.location.href.split('#')[0])}
+                  className={`flex-1 py-1.5 px-2 rounded-lg font-semibold transition ${
+                    customUrl !== window.POS_PUBLIC_ONLINE_URL
+                      ? 'bg-emerald-600 text-white shadow'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  💻 Current Host / IP
+                </button>
+              </div>
+
+              {/* QR Code Container */}
               <div className="p-3 bg-white rounded-2xl shadow-xl flex items-center justify-center border-4 border-emerald-600/30">
                 <div ref={qrContainerRef} className="flex items-center justify-center"></div>
               </div>
 
               <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-slate-200">
-                  Scan with your phone camera to open POS
+                <p className="text-xs font-bold text-slate-100 flex items-center justify-center gap-1.5">
+                  <span>📸</span>
+                  <span>Scan with Phone Camera to Install</span>
                 </p>
                 <p className="text-[11px] text-slate-400 max-w-xs">
-                  Runs offline with touch barcode scanner & receipt printer.
+                  Runs 100% offline with camera barcode scanner and receipt printer.
                 </p>
               </div>
 
+              {/* QR Action Buttons: Download, Print Placard, Share */}
+              <div className="w-full grid grid-cols-3 gap-1.5">
+                <button
+                  onClick={handleDownloadQR}
+                  className="py-2 px-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition"
+                  title="Save QR Code Image as PNG"
+                >
+                  <span>💾</span>
+                  <span>Save QR</span>
+                </button>
+                <button
+                  onClick={handlePrintPlacard}
+                  className="py-2 px-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-teal-300 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition"
+                  title="Print Countertop QR Placard"
+                >
+                  <span>🖨️</span>
+                  <span>Print Sign</span>
+                </button>
+                <button
+                  onClick={handleShare}
+                  className="py-2 px-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-indigo-300 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition"
+                  title="Share App Link"
+                >
+                  <span>📤</span>
+                  <span>Share</span>
+                </button>
+              </div>
+
+              {/* URL Address Input with Copy */}
               <div className="w-full flex items-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl">
                 <input
                   type="text"
                   value={customUrl}
                   onChange={(e) => setCustomUrl(e.target.value)}
                   className="flex-1 bg-transparent px-2 text-xs font-mono text-slate-300 focus:outline-none truncate"
-                  placeholder="URL / IP Address"
+                  placeholder="App URL / IP Address"
                 />
                 <button
                   onClick={handleCopy}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium"
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold shrink-0"
                 >
                   {copied ? 'Copied! ✓' : 'Copy'}
                 </button>
               </div>
 
-              <div className="w-full text-left bg-slate-950 border border-slate-800 p-2.5 rounded-xl space-y-1.5 text-xs">
-                <div className="font-bold text-[10px] text-emerald-400 uppercase tracking-wider">
-                  📖 How to Install:
+              {/* Interactive Platform Tabs (Android vs iPhone) */}
+              <div className="w-full text-left bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                    📖 Step-by-Step Installation:
+                  </span>
+                  <div className="flex gap-1 text-[10px]">
+                    <button
+                      onClick={() => setActivePlatformTab('android')}
+                      className={`px-2 py-0.5 rounded font-bold transition ${
+                        activePlatformTab === 'android' ? 'bg-emerald-600 text-white' : 'text-slate-400'
+                      }`}
+                    >
+                      🤖 Android
+                    </button>
+                    <button
+                      onClick={() => setActivePlatformTab('ios')}
+                      className={`px-2 py-0.5 rounded font-bold transition ${
+                        activePlatformTab === 'ios' ? 'bg-blue-600 text-white' : 'text-slate-400'
+                      }`}
+                    >
+                      🍏 iPhone (iOS)
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-start gap-1.5 text-slate-300 text-[11px]">
-                  <span>🤖</span>
-                  <div><strong>Android:</strong> Tap Chrome menu <code>⋮</code> &gt; <strong>"Install app"</strong>.</div>
-                </div>
-                <div className="flex items-start gap-1.5 text-slate-300 text-[11px]">
-                  <span>🍏</span>
-                  <div><strong>iPhone:</strong> Tap Safari Share <code>⬆</code> &gt; <strong>"Add to Home Screen"</strong>.</div>
-                </div>
+
+                {activePlatformTab === 'android' ? (
+                  <div className="space-y-1.5 text-[11px] text-slate-300">
+                    <div className="flex items-start gap-2">
+                      <span className="bg-emerald-950 text-emerald-400 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0 mt-0.5">1</span>
+                      <span>Open standard Camera on phone and point at the QR code. Tap the link to open in <strong>Google Chrome</strong>.</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="bg-emerald-950 text-emerald-400 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0 mt-0.5">2</span>
+                      <span>Tap Chrome menu button <code>⋮</code> (top-right corner).</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="bg-emerald-950 text-emerald-400 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0 mt-0.5">3</span>
+                      <span>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>. ChaPOS will install as a standalone mobile app!</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 text-[11px] text-slate-300">
+                    <div className="flex items-start gap-2">
+                      <span className="bg-blue-950 text-blue-400 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0 mt-0.5">1</span>
+                      <span>Open Camera on iPhone / iPad and scan the QR code. Open the link in <strong>Safari</strong>.</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="bg-blue-950 text-blue-400 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0 mt-0.5">2</span>
+                      <span>Tap the Safari <strong>Share button</strong> <code>⬆</code> at the bottom toolbar.</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="bg-blue-950 text-blue-400 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0 mt-0.5">3</span>
+                      <span>Scroll down and tap <strong>"Add to Home Screen"</strong> (<code>[+]</code>). The app launches in full screen without browser bars!</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
+              {/* Install on this device prompt */}
               <button
                 onClick={handleInstallApp}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950 flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950 flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
               >
-                <span>Install POS App on this Device</span>
+                <span>⚡ Install App on This Device</span>
                 <span>⬇</span>
               </button>
             </div>
 
+            {/* Modal Footer */}
             <div className="p-3 bg-slate-850 border-t border-slate-800 flex justify-end shrink-0">
               <button
                 onClick={onClose}
