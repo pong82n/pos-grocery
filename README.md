@@ -60,6 +60,28 @@ Open [`index.html`](./index.html) directly in any modern web browser (Google Chr
   - Toggle auto-receipt printing upon checkout completion.
   - One-click **Test Receipt Print** directly inside the printer setup modal.
 
+### 5. 🏛️ Editable Price & Tariff System (BIR VAT & Rates Configuration)
+- **Store-Level Tariff & BIR Tax Settings (`🏛️ Tariff & Tax`)**:
+  - Accessible directly from the top navigation bar with a live VAT percentage badge (`12% VAT`).
+  - **Editable Standard VAT Rate (%)**: Custom percentage (default 12.0% under TRAIN Law & NIRC).
+  - **Editable Senior Citizen / PWD Grocery Discount Rate (%)**: Custom percentage (default 5.0% on BNPC under RA 9994).
+  - **Editable Eco Bag Fee (₱)**: Custom charge for municipal plastic bag ordinances.
+  - **Editable Custom Tariff / Excise Duty (%)**: Surcharge for sweetened beverages or specialized imported goods.
+  - **Live Tax Simulator**: Real-time breakdown of Gross, Net, and VAT amounts on a sample ₱100 item.
+  - **Reset to BIR Defaults**: Single click resets to standard statutory Philippine rates.
+- **Cart Item Price & Tariff Quick Editor (`🏷️ Edit Item`)**:
+  - Click any unit price or tax badge (`V`, `E`, `Z`, `T`) in the active cart to open the price & tariff editor.
+  - Override unit selling price with instant discount presets (`-5%`, `-10%`, `-20%`, `Reset SRP`).
+  - Change tariff category on the fly: **🟢 VATable**, **🟡 VAT-Exempt (0%)**, **🔵 Zero-Rated (0%)**, or **🟣 Custom Tariff %**.
+  - Option to apply price/tariff adjustments exclusively to the active cart line or permanently update the default product catalog.
+- **Inventory, Pricing & Tariff Manager (`📦 Inventory`)**:
+  - Filter items by tariff classification (**All**, **VATable**, **VAT-Exempt**, **Custom Tariff**, **Low Stock**).
+  - Inline price, cost, and stock editing with real-time Gross Margin (%) calculation.
+  - One-tap toggle button between **VATable** and **VAT-Exempt** per item row.
+- **Thermal Receipt & Sales Invoice Breakdown**:
+  - Prints exact tax indicators on every line item (`(V)` for VATable, `(E)` for VAT-Exempt, `(T)` for Custom Tariff).
+  - Itemized BIR VAT analysis with dynamic effective VAT rate and custom tariff surcharges.
+
 ---
 
 ## 🇵🇭 Philippine Market & Regulatory Features
