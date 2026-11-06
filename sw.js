@@ -1,5 +1,5 @@
 // Service Worker for CHA Convenience Store POS
-const CACHE_NAME = 'cha-pos-v1.0.2';
+const CACHE_NAME = 'cha-pos-v1.0.3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,8 +10,14 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      for (const asset of ASSETS_TO_CACHE) {
+        try {
+          await cache.add(asset);
+        } catch (e) {
+          console.warn('Failed to pre-cache asset:', asset, e);
+        }
+      }
     })
   );
 });
