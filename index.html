@@ -78,6 +78,23 @@
       .receipt-58mm { width: 54mm !important; font-size: 9px !important; }
       .no-print { display: none !important; }
     }
+
+    @keyframes laserSweep {
+      0% { top: 8%; opacity: 0.7; }
+      50% { top: 92%; opacity: 1; }
+      100% { top: 8%; opacity: 0.7; }
+    }
+    .laser-scanner-line {
+      position: absolute;
+      left: 4%;
+      right: 4%;
+      height: 2.5px;
+      background: linear-gradient(90deg, transparent, #ef4444, #f87171, #ef4444, transparent);
+      box-shadow: 0 0 10px #ef4444, 0 0 20px #f87171;
+      animation: laserSweep 2s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 20;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased font-sans select-none overflow-hidden safe-top safe-bottom">
@@ -105,20 +122,39 @@
       });
     }
 
-    // Audio Beep for Barcode Scan
-    window.playScanBeep = function() {
+    // High-Fidelity Audio & Haptic Feedback for Modern Barcode Scanners
+    window.playScanBeep = function(isError = false) {
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1760, ctx.currentTime);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.08);
-        if ('vibrate' in navigator) navigator.vibrate(50);
+
+        if (isError) {
+          // Error Buzz: 280Hz -> 160Hz Sawtooth
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(280, ctx.currentTime);
+          osc.frequency.setValueAtTime(160, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.25, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.28);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.28);
+          if ('vibrate' in navigator) navigator.vibrate([120, 60, 120]);
+        } else {
+          // Authentic Zebra/Honeywell Retail Scanner Dual-Tone Chime (2100Hz -> 2600Hz)
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(2100, ctx.currentTime);
+          osc.frequency.setValueAtTime(2600, ctx.currentTime + 0.04);
+          gain.gain.setValueAtTime(0.22, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.095);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.095);
+          if ('vibrate' in navigator) navigator.vibrate(45);
+        }
       } catch (e) {}
     };
   </script>
@@ -376,6 +412,23 @@
       const [isLocked, setIsLocked] = useState(false);
       const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
 
+      // ⚡ Modern Barcode Scanner State & Hub
+      const [isScannerHubOpen, setIsScannerHubOpen] = useState(false);
+      const [scannerSettings, setScannerSettings] = useState(() => {
+        const saved = localStorage.getItem('cha_pos_scanner_settings');
+        return saved ? JSON.parse(saved) : {
+          sound: true,
+          vibrate: true,
+          autoAdd: true,
+          parseWeighedScale: true,
+          maxIntervalMs: 65,
+          minChars: 3
+        };
+      });
+      const [lastScannedBarcode, setLastScannedBarcode] = useState(null);
+      const [scanToast, setScanToast] = useState(null);
+      const [scannedBarcodeForNewProduct, setScannedBarcodeForNewProduct] = useState('');
+
       const searchInputRef = useRef(null);
 
       // Save states to LocalStorage
@@ -411,11 +464,21 @@
         localStorage.setItem('cha_pos_tariff_settings', JSON.stringify(tariffSettings));
       }, [tariffSettings]);
 
+      useEffect(() => {
+        localStorage.setItem('cha_pos_scanner_settings', JSON.stringify(scannerSettings));
+      }, [scannerSettings]);
+
+      useEffect(() => {
+        if (!scanToast) return;
+        const timer = setTimeout(() => setScanToast(null), 2800);
+        return () => clearTimeout(timer);
+      }, [scanToast]);
+
       // Global Keyboard Shortcuts
       useEffect(() => {
         const handleKeyDown = (e) => {
           if (isLocked) return;
-          if (isCheckoutOpen || scaleModalItem || isInventoryOpen || isShiftModalOpen || isParkedModalOpen || isAddProductOpen || isCashierModalOpen || isMobileQROpen || isCameraScannerOpen || isPrinterListOpen || isMobileMoreOpen || isTariffModalOpen || editingCartItem) {
+          if (isCheckoutOpen || scaleModalItem || isInventoryOpen || isShiftModalOpen || isParkedModalOpen || isAddProductOpen || isCashierModalOpen || isMobileQROpen || isCameraScannerOpen || isPrinterListOpen || isMobileMoreOpen || isTariffModalOpen || isScannerHubOpen || editingCartItem) {
             if (e.key === 'Escape') {
               setIsCheckoutOpen(false);
               setScaleModalItem(null);
@@ -429,6 +492,7 @@
               setIsPrinterListOpen(false);
               setIsMobileMoreOpen(false);
               setIsTariffModalOpen(false);
+              setIsScannerHubOpen(false);
               setEditingCartItem(null);
             }
             return;
@@ -443,6 +507,9 @@
           } else if (e.key === 'F4') {
             e.preventDefault();
             setIsParkedModalOpen(true);
+          } else if (e.key === 'F6') {
+            e.preventDefault();
+            setIsScannerHubOpen(true);
           } else if (e.key === 'F7') {
             e.preventDefault();
             setIsPrinterListOpen(true);
@@ -460,7 +527,7 @@
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-      }, [cart, isLocked, isCheckoutOpen, scaleModalItem, isInventoryOpen, isShiftModalOpen, isParkedModalOpen, isAddProductOpen, isCashierModalOpen, isMobileQROpen, isCameraScannerOpen, isPrinterListOpen, isMobileMoreOpen]);
+      }, [cart, isLocked, isCheckoutOpen, scaleModalItem, isInventoryOpen, isShiftModalOpen, isParkedModalOpen, isAddProductOpen, isCashierModalOpen, isMobileQROpen, isCameraScannerOpen, isPrinterListOpen, isMobileMoreOpen, isScannerHubOpen]);
 
       // Filtered Product Catalog
       const filteredProducts = useMemo(() => {
@@ -529,17 +596,217 @@
         setScaleModalItem(null);
       };
 
-      // Handle Camera Scan Result
-      const handleCameraScanSuccess = (scannedBarcode) => {
-        window.playScanBeep();
-        const found = products.find(p => p.barcode === scannedBarcode || p.plu === scannedBarcode);
+      // Helper: Barcode Symbology Classifier
+      const detectBarcodeSymbology = (code) => {
+        if (!code) return 'Unknown';
+        const s = String(code).trim();
+        if (/^480\d{10}$/.test(s)) return 'EAN-13 (Philippine GS1 Standard 480)';
+        if (/^(2[0-9]|02)\d{11}$/.test(s)) return 'EAN-13 (In-Store Weighed Retail Scale)';
+        if (/^\d{13}$/.test(s)) return 'EAN-13 Standard';
+        if (/^\d{12}$/.test(s)) return 'UPC-A Retail';
+        if (/^\d{8}$/.test(s)) return 'EAN-8 Compact';
+        if (/^\d{4,5}$/.test(s)) return 'PLU Code (Price Look-Up)';
+        if (/^[A-Za-z0-9\-\.\ \$\/\+\%]{6,}$/.test(s)) return 'Code 128 / Code 39';
+        if (/^https?:\/\/|[{"]/.test(s)) return '2D QR Code';
+        return 'Standard 1D/2D Barcode';
+      };
+
+      // Centralized Modern Barcode Processor (Hardware Scanner, Camera, or Manual Search Wedge)
+      const processScannedBarcode = (rawInput, source = 'HARDWARE', speedMs = null) => {
+        if (!rawInput) return false;
+        let barcode = String(rawInput).trim();
+        if (!barcode) return false;
+
+        // Strip standard AIM Symbology Identifiers (e.g. ]E0, ]C1, ]Q1, ]e0)
+        if (/^\][a-zA-Z0-9]{2}/.test(barcode)) {
+          barcode = barcode.substring(3);
+        }
+        // Strip non-printable / control characters
+        barcode = barcode.replace(/^[\x00-\x1F]+|[\x00-\x1F]+$/g, '');
+        if (!barcode) return false;
+
+        const format = detectBarcodeSymbology(barcode);
+
+        // 1. Exact Barcode Match
+        let found = products.find(p => p.barcode === barcode);
+
+        // 2. Exact PLU Match
+        if (!found) {
+          found = products.find(p => p.plu && p.plu === barcode);
+        }
+
+        // 3. Normalized EAN-13 / UPC-A Match (handle leading zero difference)
+        if (!found) {
+          if (barcode.length === 12) {
+            found = products.find(p => p.barcode === '0' + barcode);
+          } else if (barcode.length === 13 && barcode.startsWith('0')) {
+            found = products.find(p => p.barcode === barcode.slice(1));
+          }
+        }
+
+        // 4. GS1 / EAN-13 Weighed In-Store Barcode Parsing (Prefixes 20-29 or 02)
+        // Format: 20 + 4-digit PLU + 5-digit Weight in grams + 1 Check digit (e.g. 20 1001 00520 4 = PLU 1001, 520g)
+        let embeddedWeight = null;
+        if (!found && scannerSettings.parseWeighedScale && barcode.length === 13 && /^(2[0-9]|02)/.test(barcode)) {
+          const pluCandidate = barcode.slice(2, 6);
+          const weightGrams = parseInt(barcode.slice(6, 11), 10);
+          if (!isNaN(weightGrams) && weightGrams > 0) {
+            const matchedWeighedProduct = products.find(p => p.plu === pluCandidate || (p.barcode && p.barcode.includes(pluCandidate)));
+            if (matchedWeighedProduct) {
+              found = matchedWeighedProduct;
+              embeddedWeight = Number((weightGrams / 1000).toFixed(3));
+            }
+          }
+        }
+
+        // 5. If called from Search Bar and exactly 1 product matched query
+        if (!found && source === 'SEARCH_BAR') {
+          if (filteredProducts.length === 1) {
+            found = filteredProducts[0];
+          }
+        }
+
+        const scanLogEntry = {
+          barcode,
+          format,
+          product: found || null,
+          timestamp: new Date().toLocaleTimeString(),
+          speedMs: speedMs || 0,
+          source
+        };
+        setLastScannedBarcode(scanLogEntry);
+
         if (found) {
-          handleProductClick(found);
-          setIsCameraScannerOpen(false);
+          if (found.stock <= 0) {
+            if (scannerSettings.sound) window.playScanBeep(true);
+            setScanToast({ message: `"${found.name}" is OUT OF STOCK!`, type: 'error', barcode });
+            return true;
+          }
+
+          if (scannerSettings.sound) window.playScanBeep(false);
+
+          if (embeddedWeight !== null) {
+            handleAddWeighedItem(found, embeddedWeight);
+            setScanToast({
+              message: `⚖️ Weighed: ${found.name} (${embeddedWeight} kg) • ${formatPHP(found.price * embeddedWeight)}`,
+              type: 'success',
+              barcode
+            });
+          } else if (found.isWeighed) {
+            setScaleModalItem(found);
+            setScanToast({
+              message: `⚖️ Scale Opened: ${found.name} • ${formatPHP(found.price)}/kg`,
+              type: 'success',
+              barcode
+            });
+          } else {
+            handleProductClick(found);
+            setScanToast({
+              message: `⚡ Scanned: ${found.name} • ${formatPHP(found.price)} (+1)`,
+              type: 'success',
+              barcode
+            });
+          }
+          return true;
         } else {
-          alert(`Scanned barcode: ${scannedBarcode}\nNo matching product found in catalog. You can add it using "+ Add Item"!`);
+          // Barcode Not Found
+          if (scannerSettings.sound) window.playScanBeep(true);
+          setScanToast({
+            message: `Barcode "${barcode}" not in catalog.`,
+            type: 'error',
+            barcode
+          });
+
+          setTimeout(() => {
+            if (confirm(`Scanned Barcode: ${barcode} (${format})\n\nThis item is not registered in the store catalog yet.\nWould you like to add it as a new product now?`)) {
+              setScannedBarcodeForNewProduct(barcode);
+              setIsAddProductOpen(true);
+            }
+          }, 100);
+          return false;
         }
       };
+
+      // Camera Scan Handler (supports single or continuous rapid mode)
+      const handleCameraScanSuccess = (scannedBarcode, isContinuous = false) => {
+        const success = processScannedBarcode(scannedBarcode, 'CAMERA');
+        if (success && !isContinuous) {
+          setIsCameraScannerOpen(false);
+        }
+      };
+
+      // Modern Barcode Scanner HID Keyboard Wedge Engine (Global High-Speed Buffer)
+      useEffect(() => {
+        let buffer = '';
+        let lastKeyTime = 0;
+        let scanStartTime = 0;
+        let charCount = 0;
+
+        const handleGlobalKeyDown = (e) => {
+          if (isLocked) return;
+
+          // Don't intercept function keys (F1-F12), ESC, or modifier keys (Ctrl, Alt, Meta)
+          if (e.key.startsWith('F') && e.key.length > 1) return;
+          if (e.ctrlKey || e.altKey || e.metaKey || e.key === 'Escape') return;
+
+          const now = performance.now();
+          const timeDiff = now - lastKeyTime;
+          lastKeyTime = now;
+
+          const activeEl = document.activeElement;
+          const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+
+          // Scanners typically terminate with 'Enter' or 'Tab'
+          if (e.key === 'Enter' || e.key === 'Tab') {
+            if (buffer.length >= (scannerSettings.minChars || 3)) {
+              const totalDuration = now - scanStartTime;
+              const avgCharSpeed = charCount > 0 ? totalDuration / charCount : 999;
+
+              // If the average character interval was rapid (< scannerSettings.maxIntervalMs ms/char)
+              // or user was not in any text input, it is definitively a barcode scanner!
+              if (avgCharSpeed <= (scannerSettings.maxIntervalMs || 65) || !isInputFocused) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const scannedCode = buffer;
+                buffer = '';
+                charCount = 0;
+
+                // Clean accidental buffer characters from focused input
+                if (isInputFocused && activeEl.value) {
+                  if (activeEl.value.endsWith(scannedCode)) {
+                    activeEl.value = activeEl.value.slice(0, -scannedCode.length);
+                    activeEl.dispatchEvent(new Event('input', { bubbles: true }));
+                  }
+                }
+
+                processScannedBarcode(scannedCode, 'HARDWARE_SCANNER', Math.round(totalDuration));
+                return;
+              }
+            }
+            buffer = '';
+            charCount = 0;
+            return;
+          }
+
+          // Single printable characters
+          if (e.key.length === 1) {
+            if (timeDiff > (scannerSettings.maxIntervalMs || 65)) {
+              // Reset buffer
+              buffer = e.key;
+              scanStartTime = now;
+              charCount = 1;
+            } else {
+              // Rapid succession - append
+              buffer += e.key;
+              charCount++;
+            }
+          }
+        };
+
+        window.addEventListener('keydown', handleGlobalKeyDown, true);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
+      }, [products, isLocked, scannerSettings, filteredProducts, cart]);
 
       // Update Cart Item Quantity
       const updateCartQty = (id, newQty) => {
@@ -805,6 +1072,17 @@
             {/* Quick Action Navigation Buttons */}
             <div className="flex items-center space-x-1 sm:space-x-1.5 md:space-x-2">
               
+              {/* ⚡ HARDWARE & CAMERA SCANNER HUB BUTTON */}
+              <button
+                onClick={() => setIsScannerHubOpen(true)}
+                className="px-2 py-1.5 md:px-2.5 rounded-lg border border-cyan-600/70 bg-cyan-950/50 hover:bg-cyan-900/70 text-cyan-300 text-xs font-semibold flex items-center gap-1 transition shrink-0"
+                title="Barcode Scanner Hub & Hardware Settings (F6)"
+              >
+                <span>⚡</span>
+                <span className="hidden sm:inline">Scanner</span>
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse ml-0.5" title="Hardware Scanner Ready"></span>
+              </button>
+
               {/* 🖨️ AVAILABLE PRINTERS LIST BUTTON */}
               <button
                 onClick={() => setIsPrinterListOpen(true)}
@@ -913,13 +1191,15 @@
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        if (filteredProducts.length === 1) {
-                          handleProductClick(filteredProducts[0]);
+                        e.preventDefault();
+                        const query = searchQuery.trim();
+                        if (query) {
+                          processScannedBarcode(query, 'SEARCH_BAR');
                           setSearchQuery('');
                         }
                       }
                     }}
-                    placeholder="Scan Barcode or type item name / PLU..."
+                    placeholder="Scan Barcode (USB/Bluetooth/Camera) or type PLU..."
                     className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-8 pr-12 py-1.5 md:py-2 text-xs md:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                   />
                   {searchQuery && (
@@ -931,6 +1211,14 @@
                     </button>
                   )}
                 </div>
+
+                <button
+                  onClick={() => setIsScannerHubOpen(true)}
+                  className="p-1.5 md:p-2 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/60 text-cyan-300 rounded-xl flex items-center justify-center shrink-0"
+                  title="Barcode Scanner Hub & Hardware Diagnostics (F6)"
+                >
+                  <span className="text-base">⚡</span>
+                </button>
 
                 <button
                   onClick={() => setIsCameraScannerOpen(true)}
@@ -1451,6 +1739,17 @@
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
                   <button
+                    onClick={() => { setIsMobileMoreOpen(false); setIsScannerHubOpen(true); }}
+                    className="p-3 bg-slate-950 border border-cyan-800/60 rounded-xl text-left flex items-center gap-2 hover:border-cyan-600"
+                  >
+                    <span className="text-lg">⚡</span>
+                    <div>
+                      <div className="text-cyan-300">Scanner Hub</div>
+                      <div className="text-[10px] text-slate-500 font-normal">Hardware & Camera</div>
+                    </div>
+                  </button>
+
+                  <button
                     onClick={() => { setIsMobileMoreOpen(false); setIsCashierModalOpen(true); }}
                     className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-left flex items-center gap-2 hover:border-slate-700"
                   >
@@ -1529,6 +1828,33 @@
                 </div>
               </div>
             </div>
+          )}
+
+          {/* ⚡ REAL-TIME BARCODE SCAN TOAST HUD */}
+          {scanToast && (
+            <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+              <div className={`px-4 py-2 rounded-2xl shadow-2xl border flex items-center gap-2.5 backdrop-blur-md text-xs md:text-sm font-bold animate-bounce ${
+                scanToast.type === 'error'
+                  ? 'bg-rose-950/95 border-rose-500 text-rose-200 shadow-rose-950/60'
+                  : 'bg-emerald-950/95 border-emerald-400 text-emerald-200 shadow-emerald-950/60'
+              }`}>
+                <span className="text-base">{scanToast.type === 'error' ? '⚠️' : '⚡'}</span>
+                <span>{scanToast.message}</span>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* ⚡ MODERN BARCODE SCANNER HUB & DIAGNOSTIC MODAL          */}
+          {/* ========================================================= */}
+          {isScannerHubOpen && (
+            <BarcodeScannerModal
+              settings={scannerSettings}
+              setSettings={setScannerSettings}
+              lastScan={lastScannedBarcode}
+              onSimulateScan={(code) => processScannedBarcode(code, 'MANUAL_TEST')}
+              onClose={() => setIsScannerHubOpen(false)}
+            />
           )}
 
           {/* ========================================================= */}
@@ -1622,8 +1948,15 @@
           {isAddProductOpen && (
             <AddProductModal
               defaultVatRate={tariffSettings.vatRate}
-              onClose={() => setIsAddProductOpen(false)}
-              onSave={handleSaveNewProduct}
+              initialBarcode={scannedBarcodeForNewProduct}
+              onClose={() => {
+                setIsAddProductOpen(false);
+                setScannedBarcodeForNewProduct('');
+              }}
+              onSave={(newProd) => {
+                handleSaveNewProduct(newProd);
+                setScannedBarcodeForNewProduct('');
+              }}
             />
           )}
 
@@ -1971,37 +2304,81 @@
     }
 
     // =========================================================
-    // 📷 LIVE MOBILE CAMERA BARCODE SCANNER COMPONENT
+    // 📷 MODERN HIGH-SPEED CAMERA BARCODE SCANNER
     // =========================================================
     function CameraScannerModal({ onClose, onScanSuccess }) {
       const [cameraError, setCameraError] = useState('');
+      const [isContinuous, setIsContinuous] = useState(false);
+      const [scannedItemsCount, setScannedItemsCount] = useState(0);
+      const [lastScannedFeedback, setLastScannedFeedback] = useState('');
+      const [torchOn, setTorchOn] = useState(false);
+      const [hasTorch, setHasTorch] = useState(false);
+      const scannerInstanceRef = useRef(null);
+      const lastScannedTimeRef = useRef(0);
+      const lastScannedCodeRef = useRef('');
 
       useEffect(() => {
         let html5QrCode = null;
         try {
-          html5QrCode = new Html5Qrcode("reader");
+          const formatsToSupport = [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_93,
+            Html5QrcodeSupportedFormats.ITF,
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.DATA_MATRIX
+          ];
+
+          html5QrCode = new Html5Qrcode("reader", { formatsToSupport });
+          scannerInstanceRef.current = html5QrCode;
+
           const config = {
-            fps: 10,
-            qrbox: { width: 250, height: 160 },
-            aspectRatio: 1.0
+            fps: 20,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              return {
+                width: Math.floor(viewfinderWidth * 0.88),
+                height: Math.floor(Math.min(viewfinderHeight * 0.55, 180))
+              };
+            },
+            aspectRatio: 1.333,
+            experimentalFeatures: {
+              useBarCodeDetectorIfSupported: true
+            }
           };
 
           html5QrCode.start(
             { facingMode: "environment" },
             config,
             (decodedText) => {
-              if (decodedText) {
-                html5QrCode.stop().then(() => {
-                  onScanSuccess(decodedText);
-                }).catch(() => {
-                  onScanSuccess(decodedText);
-                });
+              if (!decodedText) return;
+
+              const now = Date.now();
+              if (decodedText === lastScannedCodeRef.current && (now - lastScannedTimeRef.current) < 1400) {
+                return;
               }
+              lastScannedCodeRef.current = decodedText;
+              lastScannedTimeRef.current = now;
+
+              setScannedItemsCount(prev => prev + 1);
+              setLastScannedFeedback(decodedText);
+
+              onScanSuccess(decodedText, isContinuous);
             },
-            (errorMessage) => {}
-          ).catch((err) => {
+            () => {}
+          ).then(() => {
+            try {
+              const track = html5QrCode.getRunningTrackCameraCapabilities();
+              if (track && track.torchFeature && track.torchFeature().isSupported()) {
+                setHasTorch(true);
+              }
+            } catch (e) {}
+          }).catch((err) => {
             console.error(err);
-            setCameraError('Unable to access device camera. Please ensure camera permissions are allowed in your browser.');
+            setCameraError('Unable to access camera. Please allow camera permissions in your browser.');
           });
         } catch (e) {
           setCameraError('Camera scanner failed to initialize.');
@@ -2012,44 +2389,311 @@
             html5QrCode.stop().catch(() => {});
           }
         };
-      }, []);
+      }, [isContinuous]);
+
+      const toggleTorch = async () => {
+        try {
+          if (scannerInstanceRef.current && scannerInstanceRef.current.isScanning) {
+            await scannerInstanceRef.current.applyVideoConstraints({
+              advanced: [{ torch: !torchOn }]
+            });
+            setTorchOn(!torchOn);
+          }
+        } catch (e) {
+          console.warn('Torch toggle failed', e);
+        }
+      };
 
       return (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl flex flex-col">
-            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 select-none">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl flex flex-col">
+            
+            {/* Header */}
+            <div className="p-3.5 bg-slate-850 border-b border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center space-x-2">
                 <span className="text-xl">📷</span>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-100">Camera Barcode Scanner</h3>
-                  <p className="text-[11px] text-slate-400">Aim camera at grocery barcode</p>
+                  <h3 className="font-bold text-xs md:text-sm text-slate-100 flex items-center gap-1.5">
+                    <span>Camera Barcode Scanner</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">
+                      1D / 2D
+                    </span>
+                  </h3>
+                  <p className="text-[10px] text-slate-400">Aim at EAN-13, UPC, Code 128, or QR Code</p>
                 </div>
               </div>
-              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg p-1">✕</button>
             </div>
 
+            {/* Viewfinder Body */}
             <div className="p-4 flex flex-col items-center">
               {cameraError ? (
-                <div className="p-4 bg-rose-950/40 border border-rose-600/50 rounded-xl text-rose-300 text-xs text-center">
+                <div className="p-4 bg-rose-950/40 border border-rose-600/50 rounded-2xl text-rose-300 text-xs text-center w-full">
                   <p className="font-semibold">{cameraError}</p>
                 </div>
               ) : (
                 <div className="w-full flex flex-col items-center">
-                  <div id="reader" className="w-full rounded-xl overflow-hidden bg-black border-2 border-emerald-500/50"></div>
-                  <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-                    <span className="animate-pulse">●</span>
-                    <span>Scanning for Barcode or QR Code...</span>
+                  <div className="relative w-full rounded-2xl overflow-hidden bg-black border-2 border-emerald-500/60 shadow-inner">
+                    <div id="reader" className="w-full"></div>
+                    <div className="laser-scanner-line"></div>
                   </div>
+
+                  <div className="mt-3 w-full flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                      <span className="animate-pulse">●</span>
+                      <span>Fast Hardware Decode Active</span>
+                    </div>
+
+                    {hasTorch && (
+                      <button
+                        onClick={toggleTorch}
+                        className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition ${
+                          torchOn ? 'bg-amber-500 text-slate-950 shadow' : 'bg-slate-800 text-slate-300'
+                        }`}
+                      >
+                        <span>{torchOn ? '🔦 On' : '🔦 Torch'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {lastScannedFeedback && (
+                    <div className="mt-2 w-full p-2 bg-emerald-950/60 border border-emerald-500/40 rounded-xl text-center">
+                      <span className="text-[10px] text-slate-400 block">Last Decoded:</span>
+                      <span className="text-xs font-mono font-bold text-emerald-300">{lastScannedFeedback}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
+            {/* Bottom Controls */}
+            <div className="p-3 bg-slate-850 border-t border-slate-800 flex items-center justify-between shrink-0">
+              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isContinuous}
+                  onChange={(e) => setIsContinuous(e.target.checked)}
+                  className="rounded accent-emerald-500 w-4 h-4"
+                />
+                <span className="font-semibold text-[11px]">
+                  🔁 Continuous Mode {isContinuous && `(${scannedItemsCount})`}
+                </span>
+              </label>
+
+              <button
+                onClick={onClose}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================
+    // ⚡ MODERN BARCODE SCANNER HUB & HARDWARE DIAGNOSTIC TOOL
+    // =========================================================
+    function BarcodeScannerModal({ settings, setSettings, lastScan, onSimulateScan, onClose }) {
+      const [testInput, setTestInput] = useState('');
+      const testInputRef = useRef(null);
+
+      useEffect(() => {
+        testInputRef.current?.focus();
+      }, []);
+
+      const sampleBarcodes = [
+        { name: 'Century Tuna Flakes 180g', code: '480001665101', price: 44.00, type: 'EAN-13' },
+        { name: 'Lucky Me! Pancit Canton', code: '480001664401', price: 16.00, type: 'EAN-13' },
+        { name: 'Farm Egg Large (pc)', code: '480004004001', price: 9.50, type: 'EAN-13' },
+        { name: 'Sinandomeng Rice 0.750kg', code: '201001007505', price: 39.00, type: 'Weighed EAN-13' }
+      ];
+
+      const handleTestSubmit = (e) => {
+        e.preventDefault();
+        if (testInput.trim()) {
+          onSimulateScan(testInput.trim());
+          setTestInput('');
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 md:p-4 select-none safe-top safe-bottom">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col">
+            
+            {/* Header */}
+            <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center text-cyan-300 text-lg">
+                  ⚡
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                    <span>Modern Barcode Scanner Hub</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">USB, Wireless 2.4G, Bluetooth &amp; Camera Scanners</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-white text-lg p-1">✕</button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto space-y-4">
+              
+              {/* Hardware Connection Status Card */}
+              <div className="p-3.5 bg-gradient-to-r from-cyan-950/40 to-slate-900 border border-cyan-500/30 rounded-2xl flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span className="text-xs font-bold text-emerald-300 uppercase tracking-wide">
+                      HID Hardware Wedge: Listening
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-1">
+                    Plug in any handheld scanner (Zebra, Honeywell, Sunmi, Netum, Tera) and pull trigger anytime.
+                  </p>
+                </div>
+                <span className="text-2xl">🔫</span>
+              </div>
+
+              {/* Interactive Test Field */}
+              <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
+                <label className="text-[11px] text-slate-300 font-bold block mb-1.5 flex items-center justify-between">
+                  <span>🎯 Live Scanner Test Input:</span>
+                  <span className="text-[10px] text-cyan-400 font-mono">Aim &amp; Scan</span>
+                </label>
+                <form onSubmit={handleTestSubmit} className="flex gap-2">
+                  <input
+                    ref={testInputRef}
+                    type="text"
+                    value={testInput}
+                    onChange={(e) => setTestInput(e.target.value)}
+                    placeholder="Aim scanner here or type barcode &amp; press Enter..."
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-emerald-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition shadow"
+                  >
+                    Test Scan
+                  </button>
+                </form>
+
+                {/* Last Scan Diagnostics */}
+                {lastScan && (
+                  <div className="mt-3 p-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-[11px] space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Last Scanned Barcode:</span>
+                      <span className="font-mono font-bold text-emerald-400">{lastScan.barcode}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Symbology Detected:</span>
+                      <span className="font-semibold text-cyan-300">{lastScan.format}</span>
+                    </div>
+                    {lastScan.speedMs > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Transmission Speed:</span>
+                        <span className="font-mono text-amber-300">{lastScan.speedMs} ms (High Speed)</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Catalog Match:</span>
+                      <span className="font-bold text-slate-200">
+                        {lastScan.product ? `✅ ${lastScan.product.name} (${formatPHP(lastScan.product.price)})` : '❌ Not in catalog'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Sample On-Screen Barcodes for Testing */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
+                  📱 Test Your Scanner Against Screen:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {sampleBarcodes.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => onSimulateScan(item.code)}
+                      className="p-2.5 bg-slate-950 border border-slate-800 hover:border-cyan-500/50 rounded-xl cursor-pointer transition flex flex-col items-center text-center group"
+                    >
+                      <span className="text-[10px] text-slate-400 truncate w-full font-semibold">{item.name}</span>
+                      
+                      {/* CSS Barcode Rendering */}
+                      <div className="my-1.5 px-3 py-1 bg-white rounded flex items-center justify-center space-x-[2px] h-9 shadow-inner">
+                        {[1,2,1,3,1,2,3,1,2,1,1,3,2,1,3,1,2,1,3,2,1].map((w, bIdx) => (
+                          <div
+                            key={bIdx}
+                            className={`h-full ${bIdx % 2 === 0 ? 'bg-black' : 'bg-transparent'}`}
+                            style={{ width: `${w * 1.5}px` }}
+                          ></div>
+                        ))}
+                      </div>
+
+                      <span className="font-mono text-[10px] text-emerald-400 font-bold">{item.code}</span>
+                      <span className="text-[9px] text-slate-500 mt-0.5">{formatPHP(item.price)} • {item.type}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hardware Scanner Settings Toggles */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2.5">
+                <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
+                  ⚙️ Scanner Preferences:
+                </label>
+
+                <div className="flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-slate-200 font-medium block">Audio Beep Feedback</span>
+                    <span className="text-[10px] text-slate-500">Retail dual-tone chime on scan</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.sound}
+                    onChange={(e) => setSettings({ ...settings, sound: e.target.checked })}
+                    className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-slate-200 font-medium block">Auto-Add to Active Cart</span>
+                    <span className="text-[10px] text-slate-500">Automatically increment quantity</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.autoAdd}
+                    onChange={(e) => setSettings({ ...settings, autoAdd: e.target.checked })}
+                    className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-slate-200 font-medium block">GS1 Weighed Barcode Parser</span>
+                    <span className="text-[10px] text-slate-500">Auto-calculate weight from prefixes 20-29</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.parseWeighedScale}
+                    onChange={(e) => setSettings({ ...settings, parseWeighedScale: e.target.checked })}
+                    className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
             <div className="p-3 bg-slate-850 border-t border-slate-800 flex justify-end shrink-0">
               <button
                 onClick={onClose}
                 className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold"
               >
-                Close Camera
+                Close Hub
               </button>
             </div>
           </div>
@@ -2060,8 +2704,8 @@
     // =========================================================
     // ➕ ADD PRODUCT MODAL
     // =========================================================
-    function AddProductModal({ defaultVatRate = 12, onClose, onSave }) {
-      const [barcode, setBarcode] = useState(() => generatePhilippineEAN13());
+    function AddProductModal({ defaultVatRate = 12, onClose, onSave, initialBarcode = '' }) {
+      const [barcode, setBarcode] = useState(() => initialBarcode || generatePhilippineEAN13());
       const [name, setName] = useState('');
       const [category, setCategory] = useState('Snacks');
       const [unit, setUnit] = useState('pc');
