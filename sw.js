@@ -1,5 +1,5 @@
 // Service Worker for CHA Convenience Store POS
-const CACHE_NAME = 'cha-pos-v1.0.1';
+const CACHE_NAME = 'cha-pos-v1.0.2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -32,6 +32,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith('http')) return;
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -45,7 +46,7 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        if (!networkResponse || networkResponse.status !== 200 || (networkResponse.type !== 'basic' && networkResponse.type !== 'cors')) {
           return networkResponse;
         }
         const responseToCache = networkResponse.clone();
