@@ -1,11 +1,11 @@
 {
-  "name": "CHA Convenience Store POS (PHP)",
-  "short_name": "ChaPOS",
+  "name": "CHAROT Convenience Store POS (PHP)",
+  "short_name": "CharotPOS",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#064e3b",
   "theme_color": "#047857",
-  "description": "CHA Convenience Store Point of Sale with Philippine Peso (₱), BIR VAT Compliance, and Barcode Scanning",
+  "description": "CHAROT Convenience Store Point of Sale with Philippine Peso (₱), BIR VAT Compliance, and Barcode Scanning",
   "icons": [
     {
       "src": "logo.svg",

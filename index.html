@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#064e3b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="CHA POS" />
-  <title>CHA CONVENIENCE STORE — Point of Sale (PHP ₱)</title>
+  <meta name="apple-mobile-web-app-title" content="CHAROT POS" />
+  <title>CHAROT CONVENIENCE STORE — Point of Sale (PHP ₱)</title>
   <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="manifest" href="manifest.json" />
 
@@ -186,6 +186,30 @@
       return raw12 + checkDigit.toString();
     };
 
+    // Universal Product Image Component (Real Market Photo with Graceful Fallback)
+    function ProductImage({ src, alt = '', className = '', fallbackEmoji = '🏷️' }) {
+      const [imgFailed, setImgFailed] = useState(false);
+      const isUrl = typeof src === 'string' && (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/') || src.startsWith('data:image'));
+
+      if (!src || imgFailed || !isUrl) {
+        return (
+          <span className={`inline-flex items-center justify-center select-none text-center ${className}`}>
+            {isUrl ? fallbackEmoji : (src || fallbackEmoji)}
+          </span>
+        );
+      }
+
+      return (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+          className={`object-cover select-none ${className}`}
+        />
+      );
+    }
+
     // Initial Cashiers List
     const INITIAL_CASHIERS = [
       { id: 'CSH-001', name: 'Maria Santos', role: 'Senior Cashier', pin: '1234', active: true },
@@ -206,99 +230,99 @@
       ]
     };
 
-    // Authentic Philippine Grocery Database (2026 Supermarket / DTI SRP Prices)
+    // Authentic Philippine Grocery Database (2026 Supermarket / DTI SRP Prices with Real Market Photos)
     const INITIAL_PRODUCTS = [
       // 🌾 Rice & Grains
-      { id: 'RIC-001', barcode: '480001001001', plu: '1001', name: 'Sinandomeng Special Rice', category: 'Rice & Grains', unit: 'kg', price: 52.00, cost: 44.00, stock: 450, isWeighed: true, isVatExempt: true, image: '🌾' },
-      { id: 'RIC-002', barcode: '480001001002', plu: '1002', name: 'Dinorado Fragrant Rice', category: 'Rice & Grains', unit: 'kg', price: 62.00, cost: 52.00, stock: 320, isWeighed: true, isVatExempt: true, image: '🌾' },
-      { id: 'RIC-003', barcode: '480001001003', plu: '1003', name: 'Jasmine White Rice', category: 'Rice & Grains', unit: 'kg', price: 58.00, cost: 48.00, stock: 280, isWeighed: true, isVatExempt: true, image: '🌾' },
-      { id: 'RIC-004', barcode: '480001001004', plu: '1004', name: 'Organic Brown Rice', category: 'Rice & Grains', unit: 'kg', price: 68.00, cost: 56.00, stock: 150, isWeighed: true, isVatExempt: true, image: '🌾' },
-      { id: 'RIC-005', barcode: '480001001005', plu: '1005', name: 'Glutinous Rice (Malagkit)', category: 'Rice & Grains', unit: 'kg', price: 74.00, cost: 60.00, stock: 120, isWeighed: true, isVatExempt: true, image: '🌾' },
+      { id: 'RIC-001', barcode: '480001001001', plu: '1001', name: 'Sinandomeng Special Rice', category: 'Rice & Grains', unit: 'kg', price: 52.00, cost: 44.00, stock: 450, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'RIC-002', barcode: '480001001002', plu: '1002', name: 'Dinorado Fragrant Rice', category: 'Rice & Grains', unit: 'kg', price: 62.00, cost: 52.00, stock: 320, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'RIC-003', barcode: '480001001003', plu: '1003', name: 'Jasmine White Rice', category: 'Rice & Grains', unit: 'kg', price: 58.00, cost: 48.00, stock: 280, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'RIC-004', barcode: '480001001004', plu: '1004', name: 'Organic Brown Rice', category: 'Rice & Grains', unit: 'kg', price: 68.00, cost: 56.00, stock: 150, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1594489428504-5c0c480a15fd?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'RIC-005', barcode: '480001001005', plu: '1005', name: 'Glutinous Rice (Malagkit)', category: 'Rice & Grains', unit: 'kg', price: 74.00, cost: 60.00, stock: 120, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&h=300&fit=crop&q=80&auto=format' },
 
       // 🥬 Fresh Produce
-      { id: 'VEG-001', barcode: '480002002001', plu: '2001', name: 'Red Onion (Sibuyas Pula)', category: 'Fresh Produce', unit: 'kg', price: 140.00, cost: 110.00, stock: 85, isWeighed: true, isVatExempt: true, image: '🧅' },
-      { id: 'VEG-002', barcode: '480002002002', plu: '2002', name: 'White Garlic (Bawang)', category: 'Fresh Produce', unit: 'kg', price: 160.00, cost: 125.00, stock: 70, isWeighed: true, isVatExempt: true, image: '🧄' },
-      { id: 'VEG-003', barcode: '480002002003', plu: '2003', name: 'Native Tomatoes (Kamatis)', category: 'Fresh Produce', unit: 'kg', price: 85.00, cost: 60.00, stock: 95, isWeighed: true, isVatExempt: true, image: '🍅' },
-      { id: 'VEG-004', barcode: '480002002004', plu: '2004', name: 'Fresh Calamansi Lime', category: 'Fresh Produce', unit: 'kg', price: 95.00, cost: 70.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🍋' },
-      { id: 'VEG-005', barcode: '480002002005', plu: '4011', name: 'Lakatan Bananas', category: 'Fresh Produce', unit: 'kg', price: 90.00, cost: 65.00, stock: 110, isWeighed: true, isVatExempt: true, image: '🍌' },
-      { id: 'VEG-006', barcode: '480002002006', plu: '4012', name: 'Cavendish Bananas', category: 'Fresh Produce', unit: 'kg', price: 80.00, cost: 58.00, stock: 90, isWeighed: true, isVatExempt: true, image: '🍌' },
-      { id: 'VEG-007', barcode: '480002002007', plu: '2007', name: 'Benguet Potatoes', category: 'Fresh Produce', unit: 'kg', price: 120.00, cost: 90.00, stock: 80, isWeighed: true, isVatExempt: true, image: '🥔' },
-      { id: 'VEG-008', barcode: '480002002008', plu: '2008', name: 'Fresh Benguet Carrots', category: 'Fresh Produce', unit: 'kg', price: 110.00, cost: 82.00, stock: 75, isWeighed: true, isVatExempt: true, image: '🥕' },
-      { id: 'VEG-009', barcode: '480002002009', plu: '2009', name: 'Bitter Gourd (Ampalaya)', category: 'Fresh Produce', unit: 'kg', price: 125.00, cost: 95.00, stock: 50, isWeighed: true, isVatExempt: true, image: '🥒' },
-      { id: 'VEG-010', barcode: '480002002010', plu: '2010', name: 'Purple Eggplant (Talong)', category: 'Fresh Produce', unit: 'kg', price: 90.00, cost: 68.00, stock: 65, isWeighed: true, isVatExempt: true, image: '🍆' },
-      { id: 'VEG-011', barcode: '480002002011', plu: '2011', name: 'Green Cabbage (Repolyo)', category: 'Fresh Produce', unit: 'kg', price: 100.00, cost: 75.00, stock: 70, isWeighed: true, isVatExempt: true, image: '🥬' },
-      { id: 'VEG-012', barcode: '480002002012', plu: '2012', name: 'Fresh Ginger Root (Luya)', category: 'Fresh Produce', unit: 'kg', price: 170.00, cost: 130.00, stock: 45, isWeighed: true, isVatExempt: true, image: '🫚' },
+      { id: 'VEG-001', barcode: '480002002001', plu: '2001', name: 'Red Onion (Sibuyas Pula)', category: 'Fresh Produce', unit: 'kg', price: 140.00, cost: 110.00, stock: 85, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-002', barcode: '480002002002', plu: '2002', name: 'White Garlic (Bawang)', category: 'Fresh Produce', unit: 'kg', price: 160.00, cost: 125.00, stock: 70, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1540148426945-6cf22a6b2383?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-003', barcode: '480002002003', plu: '2003', name: 'Native Tomatoes (Kamatis)', category: 'Fresh Produce', unit: 'kg', price: 85.00, cost: 60.00, stock: 95, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-004', barcode: '480002002004', plu: '2004', name: 'Fresh Calamansi Lime', category: 'Fresh Produce', unit: 'kg', price: 95.00, cost: 70.00, stock: 60, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1582284540020-8acbe03f4924?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-005', barcode: '480002002005', plu: '4011', name: 'Lakatan Bananas', category: 'Fresh Produce', unit: 'kg', price: 90.00, cost: 65.00, stock: 110, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-006', barcode: '480002002006', plu: '4012', name: 'Cavendish Bananas', category: 'Fresh Produce', unit: 'kg', price: 80.00, cost: 58.00, stock: 90, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1603833665858-e61d17a86224?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-007', barcode: '480002002007', plu: '2007', name: 'Benguet Potatoes', category: 'Fresh Produce', unit: 'kg', price: 120.00, cost: 90.00, stock: 80, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-008', barcode: '480002002008', plu: '2008', name: 'Fresh Benguet Carrots', category: 'Fresh Produce', unit: 'kg', price: 110.00, cost: 82.00, stock: 75, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-009', barcode: '480002002009', plu: '2009', name: 'Bitter Gourd (Ampalaya)', category: 'Fresh Produce', unit: 'kg', price: 125.00, cost: 95.00, stock: 50, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1589927986089-35812388d1f4?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-010', barcode: '480002002010', plu: '2010', name: 'Purple Eggplant (Talong)', category: 'Fresh Produce', unit: 'kg', price: 90.00, cost: 68.00, stock: 65, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-011', barcode: '480002002011', plu: '2011', name: 'Green Cabbage (Repolyo)', category: 'Fresh Produce', unit: 'kg', price: 100.00, cost: 75.00, stock: 70, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1594282486552-05b4d80fbb9f?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'VEG-012', barcode: '480002002012', plu: '2012', name: 'Fresh Ginger Root (Luya)', category: 'Fresh Produce', unit: 'kg', price: 170.00, cost: 130.00, stock: 45, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=300&h=300&fit=crop&q=80&auto=format' },
 
       // 🥩 Meat & Seafood
-      { id: 'MEA-001', barcode: '480003003001', plu: '3001', name: 'Fresh Whole Dressed Chicken', category: 'Meat & Seafood', unit: 'kg', price: 195.00, cost: 160.00, stock: 85, isWeighed: true, isVatExempt: true, image: '🍗' },
-      { id: 'MEA-002', barcode: '480003003002', plu: '3002', name: 'Pork Belly (Liempo)', category: 'Meat & Seafood', unit: 'kg', price: 360.00, cost: 300.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🥓' },
-      { id: 'MEA-003', barcode: '480003003003', plu: '3003', name: 'Pork Shoulder (Kasim)', category: 'Meat & Seafood', unit: 'kg', price: 320.00, cost: 265.00, stock: 65, isWeighed: true, isVatExempt: true, image: '🥩' },
-      { id: 'MEA-004', barcode: '480003003004', plu: '3004', name: 'Beef Sirloin Steak Cut', category: 'Meat & Seafood', unit: 'kg', price: 460.00, cost: 385.00, stock: 40, isWeighed: true, isVatExempt: true, image: '🥩' },
-      { id: 'MEA-005', barcode: '480003003005', plu: '3005', name: 'Fresh Milkfish (Dagupan Bangus)', category: 'Meat & Seafood', unit: 'kg', price: 240.00, cost: 195.00, stock: 50, isWeighed: true, isVatExempt: true, image: '🐟' },
-      { id: 'MEA-006', barcode: '480003003006', plu: '3006', name: 'Fresh Live Tilapia', category: 'Meat & Seafood', unit: 'kg', price: 160.00, cost: 125.00, stock: 60, isWeighed: true, isVatExempt: true, image: '🐟' },
+      { id: 'MEA-001', barcode: '480003003001', plu: '3001', name: 'Fresh Whole Dressed Chicken', category: 'Meat & Seafood', unit: 'kg', price: 195.00, cost: 160.00, stock: 85, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'MEA-002', barcode: '480003003002', plu: '3002', name: 'Pork Belly (Liempo)', category: 'Meat & Seafood', unit: 'kg', price: 360.00, cost: 300.00, stock: 60, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'MEA-003', barcode: '480003003003', plu: '3003', name: 'Pork Shoulder (Kasim)', category: 'Meat & Seafood', unit: 'kg', price: 320.00, cost: 265.00, stock: 65, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'MEA-004', barcode: '480003003004', plu: '3004', name: 'Beef Sirloin Steak Cut', category: 'Meat & Seafood', unit: 'kg', price: 460.00, cost: 385.00, stock: 40, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1558030006-450675393462?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'MEA-005', barcode: '480003003005', plu: '3005', name: 'Fresh Milkfish (Dagupan Bangus)', category: 'Meat & Seafood', unit: 'kg', price: 240.00, cost: 195.00, stock: 50, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'MEA-006', barcode: '480003003006', plu: '3006', name: 'Fresh Live Tilapia', category: 'Meat & Seafood', unit: 'kg', price: 160.00, cost: 125.00, stock: 60, isWeighed: true, isVatExempt: true, image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=300&h=300&fit=crop&q=80&auto=format' },
 
       // 🥫 Canned & Instant Goods
-      { id: 'CAN-001', barcode: '480001664401', plu: '', name: 'Lucky Me! Pancit Canton Kalamansi 80g', category: 'Canned & Instant', unit: 'pc', price: 16.00, cost: 13.50, stock: 240, isWeighed: false, isVatExempt: false, image: '🍜' },
-      { id: 'CAN-002', barcode: '480001664402', plu: '', name: 'Lucky Me! Pancit Canton Chilimansi 80g', category: 'Canned & Instant', unit: 'pc', price: 16.00, cost: 13.50, stock: 240, isWeighed: false, isVatExempt: false, image: '🍜' },
-      { id: 'CAN-003', barcode: '480001664403', plu: '', name: 'Lucky Me! Instant Mami Chicken 55g', category: 'Canned & Instant', unit: 'pc', price: 15.00, cost: 12.50, stock: 180, isWeighed: false, isVatExempt: false, image: '🍜' },
-      { id: 'CAN-004', barcode: '480001665101', plu: '', name: 'Century Tuna Flakes in Oil 180g', category: 'Canned & Instant', unit: 'can', price: 44.00, cost: 37.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-005', barcode: '480001665102', plu: '', name: 'Century Tuna Hot & Spicy 180g', category: 'Canned & Instant', unit: 'can', price: 44.00, cost: 37.00, stock: 150, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-006', barcode: '480001665201', plu: '', name: 'San Marino Corned Tuna 180g', category: 'Canned & Instant', unit: 'can', price: 43.00, cost: 36.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-007', barcode: '480001665301', plu: '', name: 'Mega Sardines Tomato Sauce 155g', category: 'Canned & Instant', unit: 'can', price: 24.50, cost: 20.00, stock: 220, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-008', barcode: '480001665302', plu: '', name: 'Ligo Sardines Extra Hot 155g', category: 'Canned & Instant', unit: 'can', price: 25.00, cost: 20.50, stock: 130, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-009', barcode: '480001665401', plu: '', name: 'Argentina Corned Beef 175g', category: 'Canned & Instant', unit: 'can', price: 43.00, cost: 35.50, stock: 140, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-010', barcode: '480001665501', plu: '', name: 'Purefoods Classic Corned Beef 210g', category: 'Canned & Instant', unit: 'can', price: 88.00, cost: 74.00, stock: 95, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'CAN-011', barcode: '480001665601', plu: '', name: 'Spam Classic Luncheon Meat 340g', category: 'Canned & Instant', unit: 'can', price: 198.00, cost: 168.00, stock: 65, isWeighed: false, isVatExempt: false, image: '🥫' },
+      { id: 'CAN-001', barcode: '480001664401', plu: '', name: 'Lucky Me! Pancit Canton Kalamansi 80g', category: 'Canned & Instant', unit: 'pc', price: 16.00, cost: 13.50, stock: 240, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-002', barcode: '480001664402', plu: '', name: 'Lucky Me! Pancit Canton Chilimansi 80g', category: 'Canned & Instant', unit: 'pc', price: 16.00, cost: 13.50, stock: 240, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-003', barcode: '480001664403', plu: '', name: 'Lucky Me! Instant Mami Chicken 55g', category: 'Canned & Instant', unit: 'pc', price: 15.00, cost: 12.50, stock: 180, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1552611052-33e04de081de?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-004', barcode: '480001665101', plu: '', name: 'Century Tuna Flakes in Oil 180g', category: 'Canned & Instant', unit: 'can', price: 44.00, cost: 37.00, stock: 160, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1534483509719-3feaee7c30da?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-005', barcode: '480001665102', plu: '', name: 'Century Tuna Hot & Spicy 180g', category: 'Canned & Instant', unit: 'can', price: 44.00, cost: 37.00, stock: 150, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-006', barcode: '480001665201', plu: '', name: 'San Marino Corned Tuna 180g', category: 'Canned & Instant', unit: 'can', price: 43.00, cost: 36.00, stock: 140, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-007', barcode: '480001665301', plu: '', name: 'Mega Sardines Tomato Sauce 155g', category: 'Canned & Instant', unit: 'can', price: 24.50, cost: 20.00, stock: 220, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1534483509719-3feaee7c30da?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-008', barcode: '480001665302', plu: '', name: 'Ligo Sardines Extra Hot 155g', category: 'Canned & Instant', unit: 'can', price: 25.00, cost: 20.50, stock: 130, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-009', barcode: '480001665401', plu: '', name: 'Argentina Corned Beef 175g', category: 'Canned & Instant', unit: 'can', price: 43.00, cost: 35.50, stock: 140, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-010', barcode: '480001665501', plu: '', name: 'Purefoods Classic Corned Beef 210g', category: 'Canned & Instant', unit: 'can', price: 88.00, cost: 74.00, stock: 95, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'CAN-011', barcode: '480001665601', plu: '', name: 'Spam Classic Luncheon Meat 340g', category: 'Canned & Instant', unit: 'can', price: 198.00, cost: 168.00, stock: 65, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=300&h=300&fit=crop&q=80&auto=format' },
 
       // 🥛 Dairy, Eggs & Bakery
-      { id: 'DAI-001', barcode: '480004004001', plu: '4001', name: 'Fresh Farm Egg Large (Piece)', category: 'Dairy & Eggs', unit: 'pc', price: 9.50, cost: 7.80, stock: 360, isWeighed: false, isVatExempt: true, image: '🥚' },
-      { id: 'DAI-002', barcode: '480004004002', plu: '4002', name: 'Fresh Farm Eggs Large (Tray of 30)', category: 'Dairy & Eggs', unit: 'tray', price: 275.00, cost: 235.00, stock: 45, isWeighed: false, isVatExempt: true, image: '🥚' },
-      { id: 'DAI-003', barcode: '480004004003', plu: '', name: 'Magnolia Fresh Milk 1L', category: 'Dairy & Eggs', unit: 'pc', price: 115.00, cost: 96.00, stock: 80, isWeighed: false, isVatExempt: false, image: '🥛' },
-      { id: 'DAI-004', barcode: '480004004004', plu: '', name: 'Bear Brand Fortified Milk Powder 300g', category: 'Dairy & Eggs', unit: 'pc', price: 125.00, cost: 104.00, stock: 95, isWeighed: false, isVatExempt: false, image: '🥛' },
-      { id: 'DAI-005', barcode: '480004004005', plu: '', name: 'Eden Cheese Original Block 165g', category: 'Dairy & Eggs', unit: 'pc', price: 68.00, cost: 56.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🧀' },
-      { id: 'DAI-006', barcode: '480004004006', plu: '', name: 'Gardenia Classic White Bread 600g', category: 'Dairy & Eggs', unit: 'pc', price: 85.00, cost: 72.00, stock: 50, isWeighed: false, isVatExempt: false, image: '🍞' },
-      { id: 'DAI-007', barcode: '480004004007', plu: '', name: 'Fresh Bakery Pan De Sal (Pack of 10)', category: 'Dairy & Eggs', unit: 'pack', price: 45.00, cost: 30.00, stock: 60, isWeighed: false, isVatExempt: false, image: '🥖' },
+      { id: 'DAI-001', barcode: '480004004001', plu: '4001', name: 'Fresh Farm Egg Large (Piece)', category: 'Dairy & Eggs', unit: 'pc', price: 9.50, cost: 7.80, stock: 360, isWeighed: false, isVatExempt: true, image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'DAI-002', barcode: '480004004002', plu: '4002', name: 'Fresh Farm Eggs Large (Tray of 30)', category: 'Dairy & Eggs', unit: 'tray', price: 275.00, cost: 235.00, stock: 45, isWeighed: false, isVatExempt: true, image: 'https://images.unsplash.com/photo-1506976785307-8732e854ad03?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'DAI-003', barcode: '480004004003', plu: '', name: 'Magnolia Fresh Milk 1L', category: 'Dairy & Eggs', unit: 'pc', price: 115.00, cost: 96.00, stock: 80, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'DAI-004', barcode: '480004004004', plu: '', name: 'Bear Brand Fortified Milk Powder 300g', category: 'Dairy & Eggs', unit: 'pc', price: 125.00, cost: 104.00, stock: 95, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'DAI-005', barcode: '480004004005', plu: '', name: 'Eden Cheese Original Block 165g', category: 'Dairy & Eggs', unit: 'pc', price: 68.00, cost: 56.00, stock: 120, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'DAI-006', barcode: '480004004006', plu: '', name: 'Gardenia Classic White Bread 600g', category: 'Dairy & Eggs', unit: 'pc', price: 85.00, cost: 72.00, stock: 50, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'DAI-007', barcode: '480004004007', plu: '', name: 'Fresh Bakery Pan De Sal (Pack of 10)', category: 'Dairy & Eggs', unit: 'pack', price: 45.00, cost: 30.00, stock: 60, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?w=300&h=300&fit=crop&q=80&auto=format' },
 
       // 🧂 Condiments & Cooking Essentials
-      { id: 'COO-001', barcode: '480005005001', plu: '', name: 'Golden Fiesta Cooking Oil 1L Pouch', category: 'Cooking & Condiments', unit: 'pouch', price: 88.00, cost: 72.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🫗' },
-      { id: 'COO-002', barcode: '480005005002', plu: '', name: 'Datu Puti Soy Sauce 1L Bottle', category: 'Cooking & Condiments', unit: 'bottle', price: 48.00, cost: 39.00, stock: 130, isWeighed: false, isVatExempt: false, image: '🍾' },
-      { id: 'COO-003', barcode: '480005005003', plu: '', name: 'Datu Puti White Vinegar 1L Bottle', category: 'Cooking & Condiments', unit: 'bottle', price: 42.00, cost: 34.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🍾' },
-      { id: 'COO-004', barcode: '480005005004', plu: '', name: 'Silver Swan Soy Sauce 1L Pouch', category: 'Cooking & Condiments', unit: 'pouch', price: 46.00, cost: 37.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🫗' },
-      { id: 'COO-005', barcode: '480005005005', plu: '', name: 'UFC Banana Ketchup 550g Bottle', category: 'Cooking & Condiments', unit: 'bottle', price: 45.00, cost: 36.50, stock: 90, isWeighed: false, isVatExempt: false, image: '🥫' },
-      { id: 'COO-006', barcode: '480005005006', plu: '', name: 'Maggi Magic Sarap 8g (Pack of 12)', category: 'Cooking & Condiments', unit: 'pack', price: 65.00, cost: 52.00, stock: 180, isWeighed: false, isVatExempt: false, image: '✨' },
-      { id: 'COO-007', barcode: '480005005007', plu: '', name: 'Ajinomoto Umami Seasoning 100g', category: 'Cooking & Condiments', unit: 'pc', price: 28.00, cost: 22.50, stock: 160, isWeighed: false, isVatExempt: false, image: '🧂' },
-      { id: 'COO-008', barcode: '480005005008', plu: '5008', name: 'Refined White Sugar 1kg', category: 'Cooking & Condiments', unit: 'kg', price: 84.00, cost: 70.00, stock: 150, isWeighed: true, isVatExempt: false, image: '🍬' },
-      { id: 'COO-009', barcode: '480005005009', plu: '5009', name: 'Washed Brown Sugar 1kg', category: 'Cooking & Condiments', unit: 'kg', price: 76.00, cost: 62.00, stock: 140, isWeighed: true, isVatExempt: false, image: '🍬' },
-      { id: 'COO-010', barcode: '480005005010', plu: '', name: 'Fidel Iodized Table Salt 500g', category: 'Cooking & Condiments', unit: 'pc', price: 20.00, cost: 15.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🧂' },
+      { id: 'COO-001', barcode: '480005005001', plu: '', name: 'Golden Fiesta Cooking Oil 1L Pouch', category: 'Cooking & Condiments', unit: 'pouch', price: 88.00, cost: 72.00, stock: 110, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'COO-002', barcode: '480005005002', plu: '', name: 'Datu Puti Soy Sauce 1L Bottle', category: 'Cooking & Condiments', unit: 'bottle', price: 48.00, cost: 39.00, stock: 130, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'COO-003', barcode: '480005005003', plu: '', name: 'Datu Puti White Vinegar 1L Bottle', category: 'Cooking & Condiments', unit: 'bottle', price: 42.00, cost: 34.00, stock: 120, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'COO-004', barcode: '480005005004', plu: '', name: 'Silver Swan Soy Sauce 1L Pouch', category: 'Cooking & Condiments', unit: 'pouch', price: 46.00, cost: 37.00, stock: 140, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1516714435131-44d6b64dc6a2?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'COO-005', barcode: '480005005005', plu: '', name: 'UFC Banana Ketchup 550g Bottle', category: 'Cooking & Condiments', unit: 'bottle', price: 45.00, cost: 36.50, stock: 90, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1585238342070-61e1e768b1ff?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'COO-006', barcode: '480005005006', plu: '', name: 'Maggi Magic Sarap 8g (Pack of 12)', category: 'Cooking & Condiments', unit: 'pack', price: 65.00, cost: 52.00, stock: 180, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'COO-007', barcode: '480005005007', plu: '', name: 'Ajinomoto Umami Seasoning 100g', category: 'Cooking & Condiments', unit: 'pc', price: 28.00, cost: 22.50, stock: 160, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1514733670139-4d87a1941d55?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'COO-008', barcode: '480005005008', plu: '5008', name: 'Refined White Sugar 1kg', category: 'Cooking & Condiments', unit: 'kg', price: 84.00, cost: 70.00, stock: 150, isWeighed: true, isVatExempt: false, image: 'https://images.unsplash.com/photo-1581441363689-1f3c3c414635?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'COO-009', barcode: '480005005009', plu: '5009', name: 'Washed Brown Sugar 1kg', category: 'Cooking & Condiments', unit: 'kg', price: 76.00, cost: 62.00, stock: 140, isWeighed: true, isVatExempt: false, image: 'https://images.unsplash.com/photo-1622484212850-eb596d769edc?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'COO-010', barcode: '480005005010', plu: '', name: 'Fidel Iodized Table Salt 500g', category: 'Cooking & Condiments', unit: 'pc', price: 20.00, cost: 15.00, stock: 160, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=300&h=300&fit=crop&q=80&auto=format' },
 
       // 🥤 Beverages & Refreshments
-      { id: 'BEV-001', barcode: '480006006001', plu: '', name: 'Coca-Cola 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 120, isWeighed: false, isVatExempt: false, image: '🥤' },
-      { id: 'BEV-002', barcode: '480006006002', plu: '', name: 'Royal Tru-Orange 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍊' },
-      { id: 'BEV-003', barcode: '480006006003', plu: '', name: 'Sprite 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 85, isWeighed: false, isVatExempt: false, image: '🍋' },
-      { id: 'BEV-004', barcode: '480006006004', plu: '', name: 'Kopiko Blanca 3-in-1 Coffee 10s Pack', category: 'Beverages', unit: 'pack', price: 125.00, cost: 102.00, stock: 110, isWeighed: false, isVatExempt: false, image: '☕' },
-      { id: 'BEV-005', barcode: '480006006005', plu: '', name: 'Nescafé Classic Pure Coffee 100g Jar', category: 'Beverages', unit: 'jar', price: 110.00, cost: 90.00, stock: 80, isWeighed: false, isVatExempt: false, image: '☕' },
-      { id: 'BEV-006', barcode: '480006006006', plu: '', name: "Nature's Spring Mineral Water 500ml", category: 'Beverages', unit: 'bottle', price: 15.00, cost: 9.50, stock: 240, isWeighed: false, isVatExempt: false, image: '💧' },
-      { id: 'BEV-007', barcode: '480006006007', plu: '', name: "Nature's Spring Purified Water 6L", category: 'Beverages', unit: 'bottle', price: 85.00, cost: 65.00, stock: 70, isWeighed: false, isVatExempt: false, image: '💧' },
-      { id: 'BEV-008', barcode: '480006006008', plu: '', name: 'San Miguel Pale Pilsen 330ml Can', category: 'Beverages', unit: 'can', price: 62.00, cost: 48.00, stock: 96, isWeighed: false, isVatExempt: false, image: '🍺' },
-      { id: 'BEV-009', barcode: '480006006009', plu: '', name: 'Red Horse Extra Strong Beer 500ml Can', category: 'Beverages', unit: 'can', price: 68.00, cost: 53.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🐎' },
+      { id: 'BEV-001', barcode: '480006006001', plu: '', name: 'Coca-Cola 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 120, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'BEV-002', barcode: '480006006002', plu: '', name: 'Royal Tru-Orange 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 90, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'BEV-003', barcode: '480006006003', plu: '', name: 'Sprite 1.5L PET Bottle', category: 'Beverages', unit: 'bottle', price: 75.00, cost: 61.00, stock: 85, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1624517452488-04869289c4ca?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'BEV-004', barcode: '480006006004', plu: '', name: 'Kopiko Blanca 3-in-1 Coffee 10s Pack', category: 'Beverages', unit: 'pack', price: 125.00, cost: 102.00, stock: 110, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'BEV-005', barcode: '480006006005', plu: '', name: 'Nescafé Classic Pure Coffee 100g Jar', category: 'Beverages', unit: 'jar', price: 110.00, cost: 90.00, stock: 80, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'BEV-006', barcode: '480006006006', plu: '', name: "Nature's Spring Mineral Water 500ml", category: 'Beverages', unit: 'bottle', price: 15.00, cost: 9.50, stock: 240, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1560023907-5f339617ea30?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'BEV-007', barcode: '480006006007', plu: '', name: "Nature's Spring Purified Water 6L", category: 'Beverages', unit: 'bottle', price: 85.00, cost: 65.00, stock: 70, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1523362628745-0c100150b504?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'BEV-008', barcode: '480006006008', plu: '', name: 'San Miguel Pale Pilsen 330ml Can', category: 'Beverages', unit: 'can', price: 62.00, cost: 48.00, stock: 96, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1535958636474-b021ee887b13?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'BEV-009', barcode: '480006006009', plu: '', name: 'Red Horse Extra Strong Beer 500ml Can', category: 'Beverages', unit: 'can', price: 68.00, cost: 53.00, stock: 110, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1518176258769-f227c798150e?w=300&h=300&fit=crop&q=80&auto=format' },
 
       // 🍪 Snacks & Biscuits
-      { id: 'SNA-001', barcode: '480007007001', plu: '', name: 'SkyFlakes Crackers Big Tub 800g', category: 'Snacks', unit: 'tub', price: 145.00, cost: 118.00, stock: 50, isWeighed: false, isVatExempt: false, image: '🍘' },
-      { id: 'SNA-002', barcode: '480007007002', plu: '', name: 'SkyFlakes Crackers (Pack of 10)', category: 'Snacks', unit: 'pack', price: 85.00, cost: 68.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍘' },
-      { id: 'SNA-003', barcode: '480007007003', plu: '', name: 'Piattos Cheese Potato Crisps 85g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 130, isWeighed: false, isVatExempt: false, image: '🥔' },
-      { id: 'SNA-004', barcode: '480007007004', plu: '', name: 'Nova Country Cheddar Multigrain 78g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 115, isWeighed: false, isVatExempt: false, image: '🌽' },
-      { id: 'SNA-005', barcode: '480007007005', plu: '', name: 'Chippy Barbecue Flavor 110g', category: 'Snacks', unit: 'pc', price: 38.00, cost: 30.00, stock: 125, isWeighed: false, isVatExempt: false, image: '🌽' },
-      { id: 'SNA-006', barcode: '480007007006', plu: '', name: 'Oishi Prawn Crackers Spicy 60g', category: 'Snacks', unit: 'pc', price: 28.00, cost: 22.00, stock: 140, isWeighed: false, isVatExempt: false, image: '🦐' },
-      { id: 'SNA-007', barcode: '480007007007', plu: '', name: 'Nagaraya Garlic Cracker Nuts 160g', category: 'Snacks', unit: 'pack', price: 48.00, cost: 38.00, stock: 85, isWeighed: false, isVatExempt: false, image: '🥜' },
+      { id: 'SNA-001', barcode: '480007007001', plu: '', name: 'SkyFlakes Crackers Big Tub 800g', category: 'Snacks', unit: 'tub', price: 145.00, cost: 118.00, stock: 50, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'SNA-002', barcode: '480007007002', plu: '', name: 'SkyFlakes Crackers (Pack of 10)', category: 'Snacks', unit: 'pack', price: 85.00, cost: 68.00, stock: 90, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'SNA-003', barcode: '480007007003', plu: '', name: 'Piattos Cheese Potato Crisps 85g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 130, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'SNA-004', barcode: '480007007004', plu: '', name: 'Nova Country Cheddar Multigrain 78g', category: 'Snacks', unit: 'pc', price: 42.00, cost: 33.50, stock: 115, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1621447504864-d8686e12698c?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'SNA-005', barcode: '480007007005', plu: '', name: 'Chippy Barbecue Flavor 110g', category: 'Snacks', unit: 'pc', price: 38.00, cost: 30.00, stock: 125, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1613919113640-25732ec5e61f?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'SNA-006', barcode: '480007007006', plu: '', name: 'Oishi Prawn Crackers Spicy 60g', category: 'Snacks', unit: 'pc', price: 28.00, cost: 22.00, stock: 140, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'SNA-007', barcode: '480007007007', plu: '', name: 'Nagaraya Garlic Cracker Nuts 160g', category: 'Snacks', unit: 'pack', price: 48.00, cost: 38.00, stock: 85, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1525059696034-4967a8e1dca2?w=300&h=300&fit=crop&q=80&auto=format' },
 
       // 🧼 Cleaning & Toiletries
-      { id: 'HOU-001', barcode: '480008008001', plu: '', name: 'Surf Blossom Fresh Detergent Powder 2kg', category: 'Household', unit: 'bag', price: 235.00, cost: 195.00, stock: 75, isWeighed: false, isVatExempt: false, image: '🧺' },
-      { id: 'HOU-002', barcode: '480008008002', plu: '', name: 'Ariel Sunrise Fresh Detergent Powder 1.9kg', category: 'Household', unit: 'bag', price: 320.00, cost: 265.00, stock: 60, isWeighed: false, isVatExempt: false, image: '🧺' },
-      { id: 'HOU-003', barcode: '480008008003', plu: '', name: 'Downy Sunrise Fresh Fabric Conditioner 800ml', category: 'Household', unit: 'pouch', price: 175.00, cost: 142.00, stock: 85, isWeighed: false, isVatExempt: false, image: '🌸' },
-      { id: 'HOU-004', barcode: '480008008004', plu: '', name: 'Joy Lemon Dishwashing Liquid 790ml Refill', category: 'Household', unit: 'pouch', price: 145.00, cost: 118.00, stock: 90, isWeighed: false, isVatExempt: false, image: '🍋' },
-      { id: 'HOU-005', barcode: '480008008005', plu: '', name: 'Safeguard Pure White Bar Soap 130g', category: 'Household', unit: 'pc', price: 52.00, cost: 41.00, stock: 160, isWeighed: false, isVatExempt: false, image: '🧼' },
-      { id: 'HOU-006', barcode: '480008008006', plu: '', name: 'Palmolive Naturals Shampoo 180ml Bottle', category: 'Household', unit: 'bottle', price: 125.00, cost: 98.00, stock: 80, isWeighed: false, isVatExempt: false, image: '🧴' },
-      { id: 'HOU-007', barcode: '480008008007', plu: '', name: 'Colgate Triple Action Toothpaste 145g', category: 'Household', unit: 'pc', price: 95.00, cost: 76.00, stock: 110, isWeighed: false, isVatExempt: false, image: '🪥' }
+      { id: 'HOU-001', barcode: '480008008001', plu: '', name: 'Surf Blossom Fresh Detergent Powder 2kg', category: 'Household', unit: 'bag', price: 235.00, cost: 195.00, stock: 75, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1610557892470-55d9e80c0bce?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'HOU-002', barcode: '480008008002', plu: '', name: 'Ariel Sunrise Fresh Detergent Powder 1.9kg', category: 'Household', unit: 'bag', price: 320.00, cost: 265.00, stock: 60, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'HOU-003', barcode: '480008008003', plu: '', name: 'Downy Sunrise Fresh Fabric Conditioner 800ml', category: 'Household', unit: 'pouch', price: 175.00, cost: 142.00, stock: 85, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'HOU-004', barcode: '480008008004', plu: '', name: 'Joy Lemon Dishwashing Liquid 790ml Refill', category: 'Household', unit: 'pouch', price: 145.00, cost: 118.00, stock: 90, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'HOU-005', barcode: '480008008005', plu: '', name: 'Safeguard Pure White Bar Soap 130g', category: 'Household', unit: 'pc', price: 52.00, cost: 41.00, stock: 160, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'HOU-006', barcode: '480008008006', plu: '', name: 'Palmolive Naturals Shampoo 180ml Bottle', category: 'Household', unit: 'bottle', price: 125.00, cost: 98.00, stock: 80, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=300&h=300&fit=crop&q=80&auto=format' },
+      { id: 'HOU-007', barcode: '480008008007', plu: '', name: 'Colgate Triple Action Toothpaste 145g', category: 'Household', unit: 'pc', price: 95.00, cost: 76.00, stock: 110, isWeighed: false, isVatExempt: false, image: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=300&h=300&fit=crop&q=80&auto=format' }
     ];
 
     const CATEGORIES = [
@@ -316,10 +340,46 @@
 
     // Main POS App Component
     function App() {
-      // Products & Inventory State
+      // Products & Inventory State (with Automatic Migration to Real Market Photos)
       const [products, setProducts] = useState(() => {
         const saved = localStorage.getItem('cha_pos_products');
-        return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+        const version = localStorage.getItem('cha_pos_products_version');
+        if (!saved) {
+          try { localStorage.setItem('cha_pos_products_version', 'v2-real-images'); } catch(e) {}
+          return INITIAL_PRODUCTS;
+        }
+
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            // Build fast lookup by product ID and barcode for real market photography
+            const imageMap = {};
+            INITIAL_PRODUCTS.forEach(p => {
+              imageMap[p.id] = p.image;
+              imageMap[p.barcode] = p.image;
+            });
+
+            let updatedCount = 0;
+            const migrated = parsed.map(p => {
+              const matchedImg = imageMap[p.id] || imageMap[p.barcode];
+              const isOldEmoji = !p.image || !p.image.startsWith('http');
+              if (matchedImg && isOldEmoji) {
+                updatedCount++;
+                return { ...p, image: matchedImg };
+              }
+              return p;
+            });
+
+            if (updatedCount > 0 || version !== 'v2-real-images') {
+              localStorage.setItem('cha_pos_products', JSON.stringify(migrated));
+              localStorage.setItem('cha_pos_products_version', 'v2-real-images');
+            }
+            return migrated;
+          }
+        } catch (e) {
+          console.warn('Failed parsing saved products:', e);
+        }
+        return INITIAL_PRODUCTS;
       });
 
       // Active Cart State
@@ -373,13 +433,27 @@
       });
 
       // Store Details
-      const [storeInfo, setStoreInfo] = useState({
-        name: 'CHA CONVENIENCE STORE',
-        branch: 'Bankers Subd. Antipolo City, Rizal',
-        tin: '248-912-345-00000 VAT Reg',
-        min: 'MIN-202610-8899124',
-        serial: 'SN-CHA-PH-99421',
-        tel: '(02) 8921-4455 / 0917-882-9090'
+      const [storeInfo, setStoreInfo] = useState(() => {
+        const defaultInfo = {
+          name: 'CHAROT CONVENIENCE STORE',
+          branch: 'Bankers Subd. Antipolo City, Rizal',
+          tin: '248-912-345-00000 VAT Reg',
+          min: 'MIN-202610-8899124',
+          serial: 'SN-CHAROT-PH-99421',
+          tel: '(02) 8921-4455 / 0917-882-9090'
+        };
+        const saved = localStorage.getItem('cha_pos_store_info');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed.name && (parsed.name.includes('CHA CONVENIENCE') || parsed.name.includes('CHA GROCERY') || parsed.name.includes("CHA'S"))) {
+              parsed.name = 'CHAROT CONVENIENCE STORE';
+              parsed.serial = 'SN-CHAROT-PH-99421';
+            }
+            return parsed;
+          } catch (e) {}
+        }
+        return defaultInfo;
       });
 
       // Search & Category Filters
@@ -1054,11 +1128,11 @@
           <header className="h-13 md:h-14 border-b border-slate-800 bg-slate-900 px-2.5 md:px-4 flex items-center justify-between z-20 shrink-0">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-lg shadow-emerald-950/40 border border-emerald-500/30 shrink-0 p-0.5">
-                <img src="logo.svg" alt="CHA Grocery Store Logo" className="w-full h-full object-contain" />
+                <img src="logo.svg" alt="CHAROT Convenience Store Logo" className="w-full h-full object-contain" />
               </div>
-              <div className="truncate max-w-[130px] sm:max-w-xs md:max-w-md">
+              <div className="truncate max-w-[140px] sm:max-w-xs md:max-w-md">
                 <h1 className="font-bold text-xs md:text-sm tracking-wide text-emerald-400 flex items-center gap-1 truncate">
-                  <span className="truncate">CHA STORE</span>
+                  <span className="truncate">CHAROT STORE</span>
                   <span className="text-[9px] uppercase font-bold tracking-widest px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
                     ₱
                   </span>
@@ -1295,16 +1369,22 @@
                           }`}
                         >
                           <div>
-                            <div className="flex items-start justify-between gap-1 mb-1">
-                              <span className="text-xl md:text-2xl filter drop-shadow">{product.image}</span>
-                              <div className="flex flex-col items-end gap-0.5">
+                            {/* Product Real Market Photo Banner */}
+                            <div className="relative w-full h-24 sm:h-28 rounded-lg overflow-hidden bg-slate-950 mb-2 border border-slate-800 flex items-center justify-center">
+                              <ProductImage
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                fallbackEmoji="🛒"
+                              />
+                              <div className="absolute top-1 right-1 flex flex-col items-end gap-0.5">
                                 {product.isWeighed && (
-                                  <span className="text-[8px] md:text-[9px] font-bold px-1 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                  <span className="text-[8px] md:text-[9px] font-bold px-1 rounded bg-blue-900/90 text-blue-200 border border-blue-400/40 backdrop-blur-xs">
                                     ⚖️ /kg
                                   </span>
                                 )}
                                 {product.isVatExempt && (
-                                  <span className="text-[8px] md:text-[9px] font-bold px-1 rounded bg-teal-500/20 text-teal-300">
+                                  <span className="text-[8px] md:text-[9px] font-bold px-1 rounded bg-teal-900/90 text-teal-200 border border-teal-400/40 backdrop-blur-xs">
                                     EXEMPT
                                   </span>
                                 )}
@@ -1480,8 +1560,10 @@
                   cart.map(item => (
                     <div key={item.id} className="py-2 flex items-start justify-between gap-1.5 group">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm">{item.image}</span>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-6 h-6 rounded-md overflow-hidden bg-slate-950 border border-slate-700/80 shrink-0 flex items-center justify-center">
+                            <ProductImage src={item.image} alt={item.name} className="w-full h-full object-cover" fallbackEmoji="🛒" />
+                          </div>
                           <h4 className="text-xs font-semibold text-slate-200 truncate" title={item.name}>
                             {item.name}
                           </h4>
@@ -2801,7 +2883,7 @@
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-slate-400 font-medium">Product Name:</label>
+                <label className="text-xs text-slate-400 font-medium">Product Name & Photo:</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -2811,17 +2893,27 @@
                     className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
                     required
                   />
-                  <div className="flex items-center gap-1 shrink-0 bg-slate-950 border border-slate-700 rounded-xl px-2">
-                    <span className="text-lg">{image}</span>
+                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-700 shrink-0 flex items-center justify-center">
+                    <ProductImage src={image} alt="Preview" className="w-full h-full object-cover" fallbackEmoji="🏷️" />
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1 pt-1">
+                <div className="mt-1">
+                  <input
+                    type="url"
+                    value={image && image.startsWith('http') ? image : ''}
+                    onChange={(e) => setImage(e.target.value)}
+                    placeholder="Paste Real Photo Image URL (https://...)"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1 pt-1 items-center">
+                  <span className="text-[10px] text-slate-500 mr-1">Presets:</span>
                   {emojiList.map(em => (
                     <button
                       key={em}
                       type="button"
                       onClick={() => setImage(em)}
-                      className={`text-base p-1 rounded hover:bg-slate-800 ${image === em ? 'bg-emerald-600/30 ring-1 ring-emerald-500' : ''}`}
+                      className={`text-sm p-1 rounded hover:bg-slate-800 ${image === em ? 'bg-emerald-600/30 ring-1 ring-emerald-500' : ''}`}
                     >
                       {em}
                     </button>
@@ -3262,8 +3354,8 @@
         if (navigator.share) {
           try {
             await navigator.share({
-              title: 'CHA Convenience Store POS',
-              text: 'Open and install CHA Convenience Store Mobile POS App:',
+              title: 'CHAROT Convenience Store POS',
+              text: 'Open and install CHAROT Convenience Store Mobile POS App:',
               url: customUrl
             });
           } catch (e) {
@@ -3281,7 +3373,7 @@
           const url = canvas.toDataURL('image/png');
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'cha-pos-mobile-qr.png';
+          a.download = 'charot-pos-mobile-qr.png';
           a.click();
           return;
         }
@@ -3289,7 +3381,7 @@
         if (img && img.src) {
           const a = document.createElement('a');
           a.href = img.src;
-          a.download = 'cha-pos-mobile-qr.png';
+          a.download = 'charot-pos-mobile-qr.png';
           a.click();
         }
       };
@@ -3309,7 +3401,7 @@
           <!DOCTYPE html>
           <html>
             <head>
-              <title>CHA CONVENIENCE STORE - Mobile POS Installation QR Placard</title>
+              <title>CHAROT CONVENIENCE STORE - Mobile POS Installation QR Placard</title>
               <style>
                 body {
                   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -3370,7 +3462,41 @@
             <body>
               <div class="placard-box">
                 <span class="badge">🏪 OFFICIAL MOBILE POS</span>
-                <h1>CHA CONVENIENCE STORE</h1>
+                <h1>CHAROT CONVENIENCE STORE</h1>
+                .address { font-size: 13px; color: #475569; margin-bottom: 12px; }
+                .subheading { font-size: 14px; font-weight: 800; color: #047857; margin-bottom: 16px; }
+                .qr-frame {
+                  display: inline-block;
+                  padding: 14px;
+                  border: 2px solid #cbd5e1;
+                  border-radius: 16px;
+                  background: #fff;
+                  margin-bottom: 14px;
+                }
+                .qr-frame img { display: block; width: 220px; height: 220px; margin: 0 auto; }
+                .url-text { font-size: 11px; font-family: monospace; color: #334155; word-break: break-all; margin-bottom: 16px; }
+                .steps-box {
+                  text-align: left;
+                  background: #f1f5f9;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 12px;
+                  padding: 12px 16px;
+                  font-size: 12px;
+                  line-height: 1.6;
+                  color: #1e293b;
+                }
+                .steps-box strong { color: #0f172a; }
+                .footer { margin-top: 16px; font-size: 11px; color: #64748b; }
+                @media print {
+                  button { display: none !important; }
+                  body { padding: 0; }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="placard-box">
+                <span class="badge">🏪 OFFICIAL MOBILE POS</span>
+                <h1>CHAROT CONVENIENCE STORE</h1>
                 <div class="address">Bankers Subd. Antipolo City, Rizal</div>
                 <div class="subheading">📱 SCAN WITH PHONE CAMERA TO OPEN POS</div>
                 
@@ -3641,9 +3767,9 @@
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-5 md:p-6 shadow-2xl flex flex-col items-center">
             
             <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-xl shadow-emerald-950 mb-2 md:mb-3 border border-emerald-500/30 p-1">
-              <img src="logo.svg" alt="CHA Grocery Store Logo" className="w-full h-full object-contain" />
+              <img src="logo.svg" alt="CHAROT Convenience Store Logo" className="w-full h-full object-contain" />
             </div>
-            <h2 className="font-extrabold text-base md:text-lg text-slate-100 tracking-wide text-center">CHA CONVENIENCE STORE</h2>
+            <h2 className="font-extrabold text-base md:text-lg text-slate-100 tracking-wide text-center">CHAROT CONVENIENCE STORE</h2>
             <p className="text-[11px] text-slate-400">Bankers Subd. Antipolo City, Rizal</p>
 
             <div className="w-full mt-3">
@@ -3736,8 +3862,10 @@
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 md:p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
             <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl">{item.image}</span>
+              <div className="flex items-center space-x-2.5">
+                <div className="w-11 h-11 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/80 shrink-0 flex items-center justify-center">
+                  <ProductImage src={item.image} alt={item.name} className="w-full h-full object-cover" fallbackEmoji="⚖️" />
+                </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-100">{item.name}</h3>
                   <p className="text-xs text-emerald-400 font-mono">
@@ -4034,7 +4162,7 @@
                   </div>
                   <div>
                     <h4 className="font-bold text-xs md:text-sm text-blue-400">Scan via GCash QR</h4>
-                    <p className="text-[11px] text-slate-400">CHA Convenience Store (0917-882-9090)</p>
+                    <p className="text-[11px] text-slate-400">CHAROT Convenience Store (0917-882-9090)</p>
                   </div>
                   <div className="p-2.5 bg-white rounded-xl shadow-md">
                     <div className="w-32 h-32 bg-slate-100 flex flex-col items-center justify-center p-1.5 border-2 border-dashed border-slate-400 rounded">
@@ -4063,7 +4191,7 @@
                   </div>
                   <div>
                     <h4 className="font-bold text-xs md:text-sm text-emerald-400">Scan via Maya QR</h4>
-                    <p className="text-[11px] text-slate-400">CHA Convenience Store POS</p>
+                    <p className="text-[11px] text-slate-400">CHAROT Convenience Store POS</p>
                   </div>
                   <div className="p-2.5 bg-white rounded-xl shadow-md">
                     <div className="w-32 h-32 bg-slate-100 flex flex-col items-center justify-center p-1.5 border-2 border-dashed border-slate-400 rounded">
@@ -4176,8 +4304,10 @@
             <form onSubmit={handleSubmit} className="p-4 overflow-y-auto space-y-3.5 text-xs">
               {/* Product Info Card */}
               <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{item.image}</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-slate-700/80 shrink-0 flex items-center justify-center">
+                    <ProductImage src={item.image} alt={item.name} className="w-full h-full object-cover" fallbackEmoji="🏷️" />
+                  </div>
                   <div>
                     <div className="font-bold text-slate-200">{item.name}</div>
                     <div className="text-[10px] text-slate-400 font-mono">Barcode: {item.barcode}</div>
@@ -4968,7 +5098,9 @@
                         {/* Product Name & Barcode */}
                         <td className="p-2.5 font-medium text-slate-200">
                           <div className="flex items-center">
-                            <span className="mr-1.5 text-base">{p.image}</span>
+                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-900 border border-slate-700/80 shrink-0 mr-2 flex items-center justify-center">
+                              <ProductImage src={p.image} alt={p.name} className="w-full h-full object-cover" fallbackEmoji="📦" />
+                            </div>
                             <div>
                               <div className="font-semibold text-xs line-clamp-1">{p.name}</div>
                               <div className="text-[10px] text-slate-400 font-mono">

@@ -1,5 +1,5 @@
-// Service Worker for CHA Convenience Store POS
-const CACHE_NAME = 'cha-pos-v1.0.3';
+// Service Worker for CHAROT Convenience Store POS
+const CACHE_NAME = 'charot-pos-v1.0.4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

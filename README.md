@@ -1,4 +1,4 @@
-# 🏪 CHA CONVENIENCE STORE — Point of Sale (POS)
+# 🏪 CHAROT CONVENIENCE STORE — Point of Sale (POS)
 
 A full-featured, zero-setup **Convenience Store Point of Sale (POS)** web application built with **React 18** and **Tailwind CSS**, designed for Philippine convenience stores and supermarkets with **Philippine Peso (₱ / PHP)** currency, DTI Suggested Retail Prices (SRP), and BIR VAT compliance in the **English language**.
 
@@ -38,8 +38,8 @@ Open [`index.html`](./index.html) directly in any modern web browser (Google Chr
 - **Mobile App POS Creation & Installation via QR Code**:
   - Tap **📱 Mobile App QR** in the top navigation bar or **📱 Mobile QR** in the mobile navigation menu.
   - **High-Resolution QR Code**: Rendered using Level-H error correction for instant camera focus, even in dim store lighting or at an angle.
-  - **Host Selector**: Easily toggle between **🌐 Cloud App** (`https://pong82n.github.io/pos-grocery/`) and **💻 Current Host / Local Wi-Fi IP**.
-  - **🖨️ Print Countertop QR Placard**: One-click preview & print of an official store QR placard (*CHA Convenience Store, Bankers Subd. Antipolo City, Rizal*) to stick on cashier checkout counters.
+  - **Host Selector**: Easily toggle between **🌐 Cloud App** (`https://pos-grocery-three.vercel.app/` or `https://pong82n.github.io/pos-grocery/`) and **💻 Current Host / Local Wi-Fi IP**.
+  - **🖨️ Print Countertop QR Placard**: One-click preview & print of an official store QR placard (*CHAROT Convenience Store, Bankers Subd. Antipolo City, Rizal*) to stick on cashier checkout counters.
   - **💾 Save QR Image**: Downloads the QR code as a PNG file for staff messaging or signage.
   - **📤 Direct App Share**: Native Web Share sheet integration to send the mobile POS link directly to cashiers via Messenger, WhatsApp, or SMS.
   - **Installation Guides**:
